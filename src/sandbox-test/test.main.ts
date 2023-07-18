@@ -8,12 +8,14 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { hrtime } from 'node:process';
 
-const exec_file = './dummy/calc-dummy'
-const dummy_args = [2, 1000, 2000, 1000, 2000]
-// const exec_file = '/home/shiyuzhe/lev/bp/bp-judger/src/sandbox/dummy/memory-dummy'
-// const dummy_args = [10, 100000, 2000000, 1000]
+// const exec_file = './dummy/calc-dummy'
+// const dummy_args = [2, 1000, 2000, 1000, 2000]
+// const exec_file = './dummy/memory-dummy'
+// const dummy_args = [10, 1000000, 2000000, 1000]
 // const exec_file = '/usr/bin/sleep'
 // const dummy_args = [20]
+const exec_file = './dummy/memory-dummy-2'
+const dummy_args = []
 const log_file = './nsjail.log'
 
   ; (async () => { 
@@ -29,17 +31,18 @@ const log_file = './nsjail.log'
         .setArgs(dummy_args)//.verbose()
         .useJailName('test')
         .mode('STANDALONE_ONCE')
+        .cwd(path.resolve('.'))
         .CPULimit({ cpu: 1, cpu_ms_per_sec: 1000 })// if set to "UNLIMITED", this wont create cpu cgroup
         .MemLimit(256) // MB
         .user(0)
         .group(99999)
         .bindmount_ros(['/bin/', '/lib', '/lib64/', '/usr/', '/sbin/', '/dev', '/dev/urandom'])
         .bindmount(path.resolve('.'))
-        .cmd_pipe()
+        .enable_monitor()
 
     let begin_time = hrtime.bigint(), endTime = BigInt(0)
     jail.spawn({ stdio })
-    await jail.Ready()
+    await jail.ready()
     const monitor = jail.getMonitor()
 
     let timer = setInterval(async () => {
@@ -55,7 +58,7 @@ const log_file = './nsjail.log'
       clearInterval(timer)
     })
 
-    await jail.Exit()
+    await jail.exit()
 
     console.log(`Time used: ${(endTime - begin_time) / BigInt(1e6)} ms`)
     logFileFH.close()

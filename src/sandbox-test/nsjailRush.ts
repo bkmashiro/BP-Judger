@@ -22,6 +22,8 @@ export class NsJail extends EventEmitter {
   targetPid: number
   onPidReceived: (pid: number) => void
   onNsjailExit: (code: number, signal: string) => void
+  stdOut: string = ''
+  stdErr: string = ''
 
   getMonitor() {
     if (!this.nsjailProcess) {
@@ -57,10 +59,15 @@ export class NsJail extends EventEmitter {
     return this
   }
 
-  async spawn(config: SpawnOptionsWithoutStdio) {
+  async spawn(config?: SpawnOptionsWithoutStdio) : Promise<string> {
     if (getuid && getuid() !== 0 && getgid && getgid() !== 0) {
       throw new Error('You must run this program as root')
     }
+
+    if (!this.path_to_command || !fs.existsSync(this.path_to_command)) {
+      throw new Error(`The path to command is not valid or unset:${this.path_to_command}`)
+    }
+
 
     let closePipe = undefined
     if (this.cmd_pipe_file) {
@@ -73,7 +80,7 @@ export class NsJail extends EventEmitter {
 
       const readStream = fs.createReadStream(fifoPath) // { encoding: 'utf8' }
       readStream.on('data', (data) => {
-        console.log(`received: ${data}`);
+        // console.log(`received: ${data}`);
         if (data.toString().startsWith('pid:')) {
           const pid = parseInt(data.toString().split(':')[1])
           console.log('pid:', pid)
@@ -89,7 +96,6 @@ export class NsJail extends EventEmitter {
       });
 
       readStream.on('end', () => {
-        console.log('stream ended');
         closePipe()
       });
 
@@ -98,25 +104,53 @@ export class NsJail extends EventEmitter {
         // remove fifo
         if (fs.existsSync(fifoPath)) {
           fs.unlinkSync(fifoPath)
-          console.log('pipe closed')
+          // console.log('pipe closed')
         }
       }
     }
 
-    this.nsjailProcess = spawn(path_to_nsjail, this.toString().split(' '), config)
-    this.nsjailProcess.addListener('exit', (code, signal) => {
-      if (closePipe) {
-        closePipe()
-      }
-      if (this.onNsjailExit) {
-        this.onNsjailExit(code, signal)
-      }
-      this.emit('exit', code, signal)
+    return new Promise((resolve, reject) => {
+      this.nsjailProcess = spawn(path_to_nsjail, this.toString().split(' '), {stdio: 'inherit'})
+      this.nsjailProcess?.on('data', (data) => {
+        console.log(data.toString());
+      });
+
+      this.nsjailProcess.stdout?.on('data', (data) => {
+        console.log(data.toString());
+        this.stdOut += data.toString();
+      });
+
+      this.nsjailProcess.stderr?.on('data', (data) => {
+        this.stdErr += data.toString();
+      });
+
+      this.nsjailProcess.on('error', (err) => {
+        reject(err);
+      });
+
+      this.nsjailProcess.on('close', (code) => {
+        console.log(`child process exited with code ${code}`);
+        
+        if (code === 0) {
+          resolve(this.stdOut); // 返回输出字符串
+        } else {
+          reject(this.stdErr);
+        }
+      });
+
+      this.nsjailProcess.addListener('exit', (code, signal) => {
+        if (closePipe) {
+          closePipe()
+        }
+        if (this.onNsjailExit) {
+          this.onNsjailExit(code, signal)
+        }
+        this.emit('exit', code, signal)
+      })
     })
-    return this.nsjailProcess
   }
 
-  Exit() {
+  exit() {
     return new Promise((resolve, reject) => {
       this.onNsjailExit = (code, signal) => {
         resolve({ code, signal })
@@ -124,7 +158,10 @@ export class NsJail extends EventEmitter {
     })
   }
 
-  Ready() {
+  ready() {
+    if (!this.cmd_pipe_file) {
+      throw new Error('You must enable monitor first so that nsjail can send the pid to the nsjailRush')
+    }
     return new Promise((resolve, reject) => {
       this.onPidReceived = (pid) => {
         resolve(pid)
@@ -140,6 +177,15 @@ export class NsJail extends EventEmitter {
 
   static fromFile(path: string) {
     return new NsJail(path)
+  }
+
+  static asDangling() {
+    return new NsJail('')
+  }
+
+  setCommand(path: string) {
+    this.path_to_command = path
+    return this
   }
 
   toString() {
@@ -497,6 +543,10 @@ export class NsJail extends EventEmitter {
     return this.add('forward_signals')
   }
 
+  disable_proc() {
+    return this.add('disable_proc')
+  }
+
   CPULimit(limit: CPULimit) {
     if (!limit.cpu_ms_per_sec || limit.cpu_ms_per_sec === "UNLIMITED") {
       limit.cpu_ms_per_sec = 0
@@ -511,10 +561,73 @@ export class NsJail extends EventEmitter {
     return this
   }
 
-  cmd_pipe() {
+  enable_monitor() {
     const file_name = path.resolve('.' + this.jailName + '.pipe')
     this.cmd_pipe_file = file_name
     return this.add('cmd_pipe', file_name)
+  }
+
+  loadConfig(config: NsJailConfig) {
+    if (config.mount) {
+      config.mount.forEach(m => this.bindmount(m))
+    }
+    if (config.mount_readonly) {
+      config.mount_readonly.forEach(m => this.bindmount_ro(m))
+    }
+    if (config.timeout) {
+      this.time_limit(config.timeout)
+    }
+    if (config.mem_max) {
+      this.MemLimit(config.mem_max)
+    }
+    if (config.pid_max) {
+      this.rlimit_nproc(config.pid_max)
+    }
+    if (config.user) {
+      this.user(config.user, config.user)
+    }
+    if (config.group) {
+      this.group(config.group, config.group)
+    }
+    if (config.mode) {
+      this.mode(config.mode)
+    }
+    if (config.cwd) {
+      this.cwd(config.cwd)
+    }
+    if (config.chroot) {
+      this.chroot(config.chroot)
+    }
+    if (config.safetySetup) {
+      this.safetySetup()
+    }
+    if (config.env) {
+      for (const [k, v] of Object.entries(config.env)) {
+        this.env(k, v)
+      }
+    }
+    return this
+  }
+
+  safetySetup(){
+    this.disable_proc()
+  }
+}
+
+export type NsJailConfig = {
+  mount? : string[],
+  mount_readonly: string[],
+  timeout?: number,
+  mem_max?: number,
+  pid_max?: number,
+  user?: number,
+  group?: number,
+  mode? : 'LISTEN_TCP' | 'STANDALONE_ONCE' | 'STANDALONE_EXECVE' | 'STANDALONE_RERUN'
+  cwd?: string
+  chroot?: string
+  safetySetup?: boolean
+  env?: {
+    [key: string]: string
   }
 }
 
