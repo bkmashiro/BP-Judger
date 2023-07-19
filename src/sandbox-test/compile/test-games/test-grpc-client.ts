@@ -35,12 +35,11 @@ async function Move(ctx) : Promise<object> {
     console.log(`I win! The number is ${number}`)
   } else if(result === '<') {
     l = number
-    console.log(`I guess ${mid}`)
   } else {
     r = number
-    console.log(`I guess ${mid}`)
   }
   mid = Math.floor((l + r) / 2)
+  console.log(`I guess ${mid}`)
   return {
     by: playerId,
     move: {
