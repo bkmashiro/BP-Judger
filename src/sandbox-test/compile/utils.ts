@@ -33,6 +33,19 @@ export function recursive_render_obj(obj: object, ctx: object) {
       return processedObj;
     }
   } else {
-    return render(obj, ctx); // 调用a()方法并替换原来的值
+    return render(obj, ctx); 
   }
+}
+
+export function timeout(action: Promise<any>, ms: number) : Promise<any> {
+  return new Promise((resolve, reject) => {
+    setTimeout(() => {
+      reject(new Error(`Timeout after ${ms}ms`))
+    }, ms)
+    action.then((result) => {
+      resolve(result)
+    }).catch((err) => {
+      reject(err)
+    })
+  })
 }

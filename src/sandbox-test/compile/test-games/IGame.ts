@@ -1,4 +1,5 @@
-import { GameContext, PlayerMove } from "../modules/playerModule/player";
+import { GameContext } from "../game/game";
+import { PlayerMove } from "../modules/playerModule/player";
 import { EventEmitter } from "events";
 
 export interface IGameRule {
@@ -52,5 +53,5 @@ export abstract class GameRuleBase extends EventEmitter implements IGameRule {
 
 export const GAME_SHALL_OVER = false
 export const GAME_SHALL_CONTINUE = true
-export const GAME_SHALL_BEGIN = false
-export const GAME_SHALL_WAIT = true
+export const GAME_SHALL_BEGIN = true
+export const GAME_SHALL_WAIT = false

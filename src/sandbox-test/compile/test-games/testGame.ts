@@ -1,6 +1,7 @@
 import { EventEmitter } from "stream";
 import { GAME_SHALL_OVER, GAME_SHALL_CONTINUE, GameRuleBase, IGameRule, IGameRuleConstructor, GAME_SHALL_WAIT, GAME_SHALL_BEGIN } from "./IGame";
-import { GameContext, PlayerMove } from "../modules/playerModule/player";
+import { PlayerMove } from "../modules/playerModule/player";
+import { GameContext } from "../game/game";
 
 export class TestGame extends GameRuleBase {
   accept_move(gameContext: object, move: PlayerMove): void {
