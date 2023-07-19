@@ -1,14 +1,14 @@
 import { EventEmitter } from "events";
 import { IModule } from "../IModule"
-import { PlayerManager, IPlayer } from "./player"
+import { PlayerManager, IPlayer, PlayerBase } from "./player"
 import { GameManager } from "../../game/game";
 
-export class GamerModule extends EventEmitter implements IModule {
+export class PlayerModule extends EventEmitter implements IModule {
 
-  gamer: IPlayer
+  gamer: PlayerBase
 
   async run(with_: object, ctx: object): Promise<object> {
-    this.gamer = PlayerManager.newGamer(with_['playerType'])
+    this.gamer = PlayerManager.newPlayer(with_['playerType'])
 
     const gameId = with_['gameId']
 

@@ -20,22 +20,22 @@ export const config = {
     //     }
     //   }
     // },
+    // {
+    //   name: "gamer-up-noob-1",
+    //   use: "gamer",
+    //   with: {
+    //     exec: "${out_file_name}",
+    //     gameId: "${gameId}",
+    //     playerType: "noob"
+    //   }
+    // },
     {
-      name: "gamer-up-noob-1",
-      use: "gamer",
+      name: "player-proxy-up",
+      use: "player",
       with: {
         exec: "${out_file_name}",
         gameId: "${gameId}",
-        playerType: "noob"
-      }
-    },
-    {
-      name: "gamer-up-noob-2",
-      use: "gamer",
-      with: {
-        exec: "${out_file_name}",
-        gameId: "${gameId}",
-        playerType: "noob"
+        playerType: "proxy"
       }
     },
     // {

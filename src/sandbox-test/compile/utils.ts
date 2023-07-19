@@ -33,11 +33,11 @@ export function recursive_render_obj(obj: object, ctx: object) {
       return processedObj;
     }
   } else {
-    return render(obj, ctx); 
+    return render(obj, ctx);
   }
 }
 
-export function timeout(action: Promise<any>, ms: number) : Promise<any> {
+export function timeout(action: Promise<any>, ms: number): Promise<any> {
   return new Promise((resolve, reject) => {
     setTimeout(() => {
       reject(new Error(`Timeout after ${ms}ms`))
@@ -48,4 +48,23 @@ export function timeout(action: Promise<any>, ms: number) : Promise<any> {
       reject(err)
     })
   })
+}
+
+
+export function All(set: any, predicate: ((item: any) => boolean)) {
+  for (const item of set) {
+    if (!predicate(item)) {
+      return false
+    }
+  }
+  return true
+}
+
+export function Any(set: any, predicate: ((item: any) => boolean)) {
+  for (const item of set) {
+    if (predicate(item)) {
+      return true
+    }
+  }
+  return false
 }

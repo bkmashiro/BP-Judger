@@ -1,35 +1,45 @@
 import { EventEmitter } from "stream";
 import { GAME_SHALL_OVER, GAME_SHALL_CONTINUE, GameRuleBase, IGameRule, IGameRuleConstructor, GAME_SHALL_WAIT, GAME_SHALL_BEGIN } from "./IGame";
-import { PlayerMove } from "../modules/playerModule/player";
-import { GameContext } from "../game/game";
+import { PlayerBase, PlayerMoveWarpper, PlayerMove } from "../modules/playerModule/player";
+import { GameContext, MatchContext } from "../game/game";
+import { All } from "../utils";
 
 export class TestGame extends GameRuleBase {
-  accept_move(gameContext: object, move: PlayerMove): void {
-    gameContext['yaju_value'] += move['move']['inc']
+  accept_move(ctx: MatchContext, move: PlayerMove): void {
+    ctx['moves'].push({
+      move: move,
+      compare_result: this.compare_number(move['guess'], this.secret['target'])
+    })
   }
 
-  validate_move_post_reqirements(gameContext: GameContext, move: PlayerMove): boolean {
-    if(gameContext['yaju_value'] > 1919810){
+  compare_number(a: number, b: number){
+    if(a > b) return '>'
+    if(a < b) return '<'
+    return '='
+  }
+
+  validate_move_post_reqirements(ctx: MatchContext, move: PlayerMoveWarpper): boolean {
+    if(move.move['guess'] === this.secret['target']){
       this.winnerIs(move.by).gameover()
       return GAME_SHALL_OVER
     }
     return GAME_SHALL_CONTINUE
   }
 
-  init_game(gameContext: GameContext): void {
-    gameContext['yaju_value'] = 114514
+  init_game(ctx: MatchContext): void {
+    this.secret['target'] = 114514
+    ctx['moves'] = []
   }
 
-  validate_game_pre_reqirements(gameContext: GameContext): boolean {
-    // gamer is a Record
-    if(Object.keys(gameContext['gamers']).length === 2) {
+  validate_game_pre_reqirements(ctx: MatchContext): boolean {
+    if(ctx['players'].size === 1 && All(ctx['players'].values(), (gamer) => gamer.playerStatus === 'ready')) {
       return GAME_SHALL_BEGIN
     }
     return GAME_SHALL_WAIT;
   }
 
-  validate_move(gameContext: object, move: PlayerMove): boolean {
-    if (move['move']["inc"] > 0) {
+  validate_move(ctx: MatchContext, move: PlayerMove): boolean {
+    if (move.hasOwnProperty('guess')) {
       return true
     }
     return false

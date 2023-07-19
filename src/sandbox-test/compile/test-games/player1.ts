@@ -1,7 +1,8 @@
-import { PlayerBase, PlayerMove } from "../modules/playerModule/player"
+import { GameContext, MatchContext } from "../game/game"
+import { PlayerBase, PlayerMoveWarpper } from "../modules/playerModule/player"
 
 export class Noob extends PlayerBase {
-  move(context: object): Promise<PlayerMove> {
+  move(context: MatchContext): Promise<PlayerMoveWarpper> {
     return new Promise((resolve, reject) => {
       setTimeout(() => {
         resolve({

@@ -26,7 +26,8 @@ export class BKPileline {
       executor.inject(this.context)
       try {
         console.log(`Running job ${job.name}`)
-        console.log(await executor.run())
+        const ret = await executor.run()
+        console.log(`Job ${job.name} finished returning ${ret}`)
         this.job_completion_strategy[onSuccess]()
       } catch (err) {
         console.log(`when executing job ${job.name}`, err)
