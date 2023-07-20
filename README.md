@@ -30,3 +30,13 @@ Move方法接收Context（的一部分），返回一个PlayerMove. 这俩都是
 
 ### TODO LIST
 Gamerule还是只能本地跑，需要封成gRPC才能跨语言调用
+
+开发时残留内容有点多，需要重构
+
+关于几个EventEmitter好像有点问题，可能有地方会多次订阅导致内存泄漏
+
+Game.ts的代码需要整理
+
+Game的等待房间结束有些小问题，如果房间未开始就去等待最好抛出错误
+
+Pipelining需要加一个等待的功能
