@@ -10,6 +10,8 @@ Yet another botzone judger (WIP)
 
 运行`/src/game/game.test.ts`拉起一个Pipeline
 
+Pipeline的内容自由配置，可以是编译（支持nsjail），运行命令或者调用module，类似GitHub的workflow，目前有一个测试用的Pipeline在`/config/g++.ts`中
+
 `sudo ts-node game.test.ts` (如果要用NsJail需要`sudo`)
 
 Pipeline会做的事情:
