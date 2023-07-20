@@ -31,31 +31,27 @@ export const config = {
     // },
     {
       name: "player-proxy-up",
-      use: "player",
+      use: "player", // Note that this is asynchronized
       with: {
         exec: "${out_file_name}",
         gameId: "${gameId}",
         playerType: "proxy"
       }
     },
-    // {
-    //   name: "gamer-down",
-    //   run: "echo gamer is down"
-    // },
-    // {
-    //   name: "notify",
-    //   use: "post",
-    //   with: {
-    //     url: "http://.../notify",
-    //     data: {
-    //       "result": "echo"
-    //     }
-    //   }
-    // },
-    // {
-    //   name: "clean",
-    //   run: "echo Im do some clean work"
-    // }
+    {
+      name: "notify",
+      use: "post",
+      with: {
+        url: "https://run.mocky.io/v3/",
+        data: {
+          data: "${post_url}"
+        }
+      }
+    },
+    {
+      name: "clean",
+      run: "echo Im do some clean work. 上面的都是测试，你可以在/src/config/g++.ts修改"
+    }
   ],
   constants: {}
 }

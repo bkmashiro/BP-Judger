@@ -1,20 +1,21 @@
 import { config } from "../configs/g++";
-import { POSTModule } from "../pipelining/modules/testModules";
+import { POSTModule } from "../pipelining/modules/testModules/POSTModule";
 import { BKPileline } from "../pipelining/pipelining";
 import { GuessNumberGame } from "./gamerules/GuessNumber/GuessNumberGame";
-import { Noob } from "./gamerules/GuessNumber/bots/Noob";
+import { Noob as NoobPlayer } from "./gamerules/GuessNumber/bots/Noob";
 import { GameManager } from "./game";
-import { PlayerProxy, PlayerProxyManager, shutdownServer } from "./players/playerProxy";
+import { PlayerProxyManager as PlayerProxyFactory, shutdownServer } from "./players/playerProxy";
 import { PlayerModule } from "../pipelining/modules/playerModule/playerModule";
 import { PlayerManager } from "../pipelining/modules/playerModule/player";
 
 
 ; (async () => {
-  GameManager.registerGameRule('test', GuessNumberGame)
-  PlayerManager.registerGamerType('noob', Noob) // register class (class-prototype)
-  PlayerManager.registerGamerType('proxy', new PlayerProxyManager()) // register factory 
+  GameManager.registerGameRule('GuessNumber', GuessNumberGame)
 
-  const testGame = GameManager.newGame('test')
+  PlayerManager.registerGamerType('noob', NoobPlayer)                 // register prototype class
+  PlayerManager.registerGamerType('proxy', new PlayerProxyFactory())  // register factory 
+
+  const guessNumberGame = GameManager.newGame('GuessNumber')
 
   BKPileline.registerModule('post', new POSTModule())
   BKPileline.registerModule('player', new PlayerModule())
@@ -24,13 +25,15 @@ import { PlayerManager } from "../pipelining/modules/playerModule/player";
     {
       'out_file_name': 'helloworld.out',
       'in_file_name': 'helloworld.cpp',
-      'gameId': testGame.uuid,
+      'gameId': guessNumberGame.uuid,
+      'post_url': '3a3f3685-dd7c-48da-8c82-1466b03d24d8'
     }
   )
 
-  await pipeline.run()
+  await pipeline.run()  // this runs configed modules in pipeline
+                        // you can do compile, setup rooms, etc. here
 
-  const ret = await testGame.whenGameOver();
-  console.log(`Game ${testGame.uuid} is over, winner is ${ret.winner}`)
+  const ret = await guessNumberGame.whenGameOver();
+  console.log(`Game ${guessNumberGame.uuid} is over, winner is ${ret.winner}`)
   shutdownServer()
 })()

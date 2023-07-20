@@ -25,11 +25,11 @@ export class GameManager {
   static activeGames: Record<GameID, Game> = {}
   static gameRules: Record<GameName, IGameRuleConstructor> = {}
 
-  public static newGame(ganeName: GameName) {
-    if (!GameManager.gameRules.hasOwnProperty(ganeName)) {
-      throw new Error(`Game ${ganeName} not found`)
+  public static newGame(gameruleName: GameName) {
+    if (!GameManager.gameRules.hasOwnProperty(gameruleName)) {
+      throw new Error(`Game ${gameruleName} not found`)
     }
-    const gameRule = GameManager.gameRules[ganeName]
+    const gameRule = GameManager.gameRules[gameruleName]
 
     const gameId = GameManager.newGameID()
     const game = new Game(gameId, new gameRule())

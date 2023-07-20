@@ -26,6 +26,7 @@
     "@nestjs/common": "^9.0.0",
     "@nestjs/core": "^9.0.0",
     "@nestjs/platform-express": "^9.0.0",
+    "axios": "^1.4.0",
     "google-protobuf": "^3.21.2",
     "grpc-tools": "^1.12.4",
     "log4js": "^6.9.1",

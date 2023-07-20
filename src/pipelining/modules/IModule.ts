@@ -1,3 +1,6 @@
 export interface IModule {
-  run(with_: object, ctx: object): Promise<object>
+  run(with_: WithContext, ctx: RuntimeContext): Promise<any>
 }
+
+export type WithContext = object
+export type RuntimeContext = object
