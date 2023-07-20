@@ -2,7 +2,7 @@ import { config } from "../configs/g++";
 import { POSTModule } from "../pipelining/modules/testModules";
 import { BKPileline } from "../pipelining/pipelining";
 import { GuessNumberGame } from "./gamerules/GuessNumber/GuessNumberGame";
-import { Noob } from "./players/player1";
+import { Noob } from "./gamerules/GuessNumber/bots/Noob";
 import { GameManager } from "./game";
 import { PlayerProxy, PlayerProxyManager, shutdownServer } from "./players/playerProxy";
 import { PlayerModule } from "../pipelining/modules/playerModule/playerModule";

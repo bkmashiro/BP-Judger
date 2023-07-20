@@ -1,5 +1,5 @@
 import * as grpc from "@grpc/grpc-js";
-import {PlayerProxyClient, JsonMessage} from "../grpc/typescript/gamer-proxy";
+import {PlayerProxyClient, JsonMessage} from "../../grpc/typescript/gamer-proxy";
 
 const gamerProxy = new PlayerProxyClient("0.0.0.0:8848", grpc.credentials.createInsecure());
 
@@ -50,6 +50,7 @@ async function Move(ctx) : Promise<object> {
 
 const stream = gamerProxy.Move()
 let playerId = `d9668c37-6c28-4b46-8c88-6d550da1410d`
+
 ; (async () => {
   // establish two way stream to server
 
