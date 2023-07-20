@@ -6,7 +6,11 @@ Yet another botzone judger (WIP)
 
 目前没有接口，只有测试类的代码
 
+### game.test.ts
+
 运行`/src/game/game.test.ts`拉起一个Pipeline
+
+`sudo ts-node game.test.ts` (如果要用NsJail需要`sudo`)
 
 Pipeline会做的事情:
   - 从`/config/g++.ts`中读取流水线配置
@@ -21,12 +25,16 @@ Game有几个重要的对象，一个Gamerule(游戏规则)，一些Player(玩�
 
 玩家加入房间，被Gamerule验证是否可以开始
 
-Game开始后，Gamerule会根据PickPlayerStrategy选取玩家通过gRPC调用Move方法
+Game开始后，Gamerule会根据PickPlayerStrategy(还没实现)选取玩家通过gRPC调用Move方法
 
 Move方法接收Context（的一部分），返回一个PlayerMove. 这俩都是JSON，具体的格式是自定义的。
 
 玩家的Move调用结束后，Gamerule会验证这个Move是否合法，如果合法，就会更新Context，并验证是否游戏结束。如果没有，继续调用下一玩家的Move方法，直到游戏结束。
 
+### 
+`/src/game/gamerules/GuessNumber/bots/BinarySearchBotUseTemplate.ts`，这个是跟上面的测试猜数字游戏配套的bot, 使用二分查找策略
+
+`ts-node BinarySearchBotUseTemplate.ts`
 
 ### TODO LIST
 Gamerule还是只能本地跑，需要封成gRPC才能跨语言调用
@@ -40,3 +48,5 @@ Game.ts的代码需要整理
 Game的等待房间结束有些小问题，如果房间未开始就去等待最好抛出错误
 
 Pipelining需要加一个等待的功能
+
+目前bots通过uuid来区分，测试bot为了省事，直接用了固定的uuid，实际上应该是控制端告知的，或者bot上线用凭据去取
