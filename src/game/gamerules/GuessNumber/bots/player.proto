@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+message JsonMessage {
+  string json = 1;
+}
+
+service PlayerProxy {
+  rpc Move(stream JsonMessage) returns (stream JsonMessage) {}
+}
