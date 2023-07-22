@@ -1,4 +1,4 @@
-import { GuessNumberGameTemplate } from "../bot_template/GuessNumber.template";
+import { GuessNumberGameTemplate } from "../../bot_template/GuessNumber.template";
 
 class MyBot extends GuessNumberGameTemplate {
   l=0

@@ -35,8 +35,11 @@ export abstract class PlayerBase extends EventEmitter implements IPlayer {
   onGameover(gameContext: GameContext) {}
 
   setStatus(status: PlayerStatus) {
+    if(this.playerStatus === status) {
+      return
+    }
+
     this.playerStatus = status
-    console.log(`Player ${this.uuid} status changed to ${status}`)
     this.emit('status-change', status)
   }
 }

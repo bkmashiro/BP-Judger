@@ -38,20 +38,20 @@ export const config = {
         playerType: "proxy"
       }
     },
-    {
-      name: "notify",
-      use: "post",
-      with: {
-        url: "https://run.mocky.io/v3/",
-        data: {
-          data: "${post_url}"
-        }
-      }
-    },
-    {
-      name: "clean",
-      run: "echo Im do some clean work. 上面的都是测试，你可以在/src/config/g++.ts修改"
-    }
+    // {
+    //   name: "notify",
+    //   use: "post",
+    //   with: {
+    //     url: "https://run.mocky.io/v3/",
+    //     data: {
+    //       data: "${post_url}"
+    //     }
+    //   }
+    // },
+    // {
+    //   name: "clean",
+    //   run: "echo Im do some clean work. 上面的都是测试，你可以在/src/config/g++.ts修改"
+    // }
   ],
   constants: {}
 }
