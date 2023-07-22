@@ -2,18 +2,19 @@
 #include "player_proxy_client.h"
 
 class MyBot : public Bot {
+  int res = 114510;
 public:
-  // using Bot::Bot;
-  MyBot(std::string url, std::string uuid) : Bot(url, uuid) {}
+  using Bot::Bot;
   json Move(json &ctx) override {
     json reply;
-    reply["move"] = "114514";
+    reply["guess"] = res++;
+    LOG("MyBot Guessed " << res)
     return reply;
   }
 };
 
 int main() {
-  std::unique_ptr<MyBot> myBot = std::unique_ptr<MyBot>(new MyBot("",""));
+  std::unique_ptr<MyBot> myBot = std::unique_ptr<MyBot>(new MyBot("0.0.0.0:8848", "d9668c37-6c28-4b46-8c88-6d550da1410d"));
   myBot->Ready();
 }
 

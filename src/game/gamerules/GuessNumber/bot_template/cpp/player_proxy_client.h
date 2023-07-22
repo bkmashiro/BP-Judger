@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <thread>
+#include <vector>
 #include <player.grpc.pb.h>
 #include <grpcpp/grpcpp.h>
 #include <nlohmann/json.hpp>
@@ -23,7 +24,7 @@ public:
   explicit PlayerProxyClient(std::shared_ptr<Channel> channel)
       : stub_(PlayerProxy::NewStub(channel)) {}
 
-  void PerformMoves(std::function<json(json)> Move)
+  void PerformMoves(std::function<json(json)> Move, std::vector<std::string>& initial_msg) //todo fix this into async
   {
     ClientContext context;
     stream = std::shared_ptr<ClientReaderWriter<JsonMessage, JsonMessage>>(stub_->Move(&context));
@@ -35,8 +36,17 @@ public:
       while (stream->Read(&response)) {
           json j = json::parse(response.json());
           // call the bot's Move function, which is passed in as a parameter
+          // LOG("Received: " << j.dump())
           json reply = Move(j);
+          // LOG("Reply: " << reply.dump())
+          Write(reply.dump());
       } });
+
+    // Send requests to the server
+    for (const std::string &msg : initial_msg)
+    {
+      Write(msg);
+    }
 
     // Wait for the response reader thread to finish and close the stream on the server side
     response_reader.join();
@@ -49,7 +59,7 @@ public:
     }
     else
     {
-      LOG("Game over successfully, exit")
+      LOG("Game is over")
     }
   }
   void Write(std::string str)
@@ -58,7 +68,7 @@ public:
     request.set_json(str);
     stream->Write(request);
   }
-
+  
 private:
   std::unique_ptr<PlayerProxy::Stub> stub_;
   std::shared_ptr<ClientReaderWriter<JsonMessage, JsonMessage>> stream;
