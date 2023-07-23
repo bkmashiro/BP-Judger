@@ -2,6 +2,7 @@ import { randomUUID } from "crypto"
 import { GAME_SHALL_BEGIN, GAME_SHALL_OVER, GameRuleBase, IGameRuleConstructor } from "./gamerules/IGame"
 import { EventEmitter } from "events"
 import { GameID, GameName, IPlayer, PlayerBase, PlayerID } from "src/pipelining/modules/playerModule/player"
+import { GameRuleFactory } from "./gamerules/gameruleProxy/gameruleProxy"
 
 export type GameContext = {
   "players": Map<PlayerID, IPlayer>,
@@ -23,7 +24,7 @@ export type MatchContext = {
 
 export class GameManager {
   static activeGames: Record<GameID, Game> = {}
-  static gameRules: Record<GameName, IGameRuleConstructor> = {}
+  static gameRules: Record<GameName, IGameRuleConstructor | GameRuleFactory> = {}
 
   public static newGame(gameruleName: GameName) {
     if (!GameManager.gameRules.hasOwnProperty(gameruleName)) {
@@ -32,18 +33,27 @@ export class GameManager {
     const gameRule = GameManager.gameRules[gameruleName]
 
     const gameId = GameManager.newGameID()
-    const game = new Game(gameId, new gameRule())
+    let gamerule = null
+    if (gameRule instanceof GameRuleFactory) {
+      gamerule = gameRule.newGameRuleProxy(gameId)
+    } else {
+      gamerule = new gameRule()
+    } 
+    const game = new Game(gameId, gamerule)
     GameManager.activeGames[gameId] = game
     return game
   }
 
-  static newGameID() { return randomUUID() }
+  static newGameID() { 
+    return "ac856d20-4e9c-409f-b1b3-d2d41a1df9a0"
+    // return randomUUID()
+  }
 
   static hasGame(gameId: GameID) { return GameManager.activeGames.hasOwnProperty(gameId) }
 
   static getGame(gameId: GameID) { return GameManager.activeGames[gameId] }
 
-  static registerGameRule(gameName: GameName, gameRule: IGameRuleConstructor) {
+  static registerGameRule(gameName: GameName, gameRule: IGameRuleConstructor | GameRuleFactory) {
     GameManager.gameRules[gameName] = gameRule
   }
 }

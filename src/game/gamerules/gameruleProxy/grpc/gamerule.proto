@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+service GameRuleProxyService {
+  rpc ValidateGamePreRequirements(stream GameRuleResp) returns (stream GameRuleQuery) {}
+  rpc ValidateMovePostRequirements(stream GameRuleResp) returns (stream GameRuleQuery) {}
+  rpc ValidateMove(stream GameRuleResp) returns (stream GameRuleQuery) {}
+  rpc AcceptMove(stream GameRuleResp) returns (stream GameRuleQuery) {}
+  rpc InitGame(stream GameRuleResp) returns (stream GameRuleQuery) {}
+}
+
+message GameId {
+  string value = 1;
+}
+
+message Data {
+  string value = 1;
+}
+
+message GameRuleResp {
+  GameId gameId = 1;
+  Data data = 2;
+}
+
+message GameRuleQuery {
+  GameId gameId = 1;
+  Data data = 2;
+}

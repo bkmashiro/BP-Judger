@@ -68,3 +68,9 @@ export function Any(set: any, predicate: ((item: any) => boolean)) {
   }
   return false
 }
+
+export function ifNotNullDo(func: any, ...args: any[]) {
+  if (func) {
+    func(...args)
+  }
+}

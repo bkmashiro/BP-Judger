@@ -1,4 +1,4 @@
-import { config } from "../configs/g++";
+import { config } from "../configs/g++2";
 import { POSTModule } from "../pipelining/modules/testModules/POSTModule";
 import { BKPileline } from "../pipelining/pipelining";
 import { GuessNumberGame } from "./gamerules/GuessNumber/GuessNumberGame";
@@ -7,16 +7,19 @@ import { GameManager } from "./game";
 import { PlayerProxyManager as PlayerProxyFactory, shutdownServer } from "./players/playerProxy";
 import { PlayerModule } from "../pipelining/modules/playerModule/playerModule";
 import { PlayerManager } from "../pipelining/modules/playerModule/player";
+import { GameRuleProxyManager } from "./gamerules/gameruleProxy/gameruleProxy";
 
 
 ; (async () => {
   GameManager.registerGameRule('GuessNumber', GuessNumberGame)
+  GameManager.registerGameRule('GameRuleProxy', new GameRuleProxyManager())
 
   PlayerManager.registerGamerType('noob', NoobPlayer)                 // register prototype class
   PlayerManager.registerGamerType('proxy', new PlayerProxyFactory())  // register factory 
 
-  const guessNumberGame = GameManager.newGame('GuessNumber')
-
+  // const guessNumberGame = GameManager.newGame('GuessNumber')
+  const guessNumberGame = GameManager.newGame('GameRuleProxy')
+  console.log(`Game ${guessNumberGame.uuid} created`)
   BKPileline.registerModule('post', new POSTModule())
   BKPileline.registerModule('player', new PlayerModule())
 
