@@ -129,6 +129,7 @@ class PlayerProxyGRPCService extends UnimplementedPlayerProxyService {
       return new Promise((resolve, reject) => {
         PlayerProxyGRPCService.onData.set(playerId, (data: JsonMessage) => {
           const obj = JSON.parse(data.json)
+          // console.debug(`[PlayerProxyGRPCService.letPlayerMove] obj is `, obj)
           if(obj.hasOwnProperty('move')) {
             resolve(obj)
           } else {

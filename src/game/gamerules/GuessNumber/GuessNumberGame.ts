@@ -4,10 +4,11 @@ import { All } from "../../../utils";
 import { PlayerMove, PlayerMoveWarpper } from "../../../pipelining/modules/playerModule/player";
 
 export class GuessNumberGame extends GameRuleBase {
-  accept_move(ctx: MatchContext, move: PlayerMove): void {
+
+  async accept_move(ctx: MatchContext, move: PlayerMoveWarpper) {
     ctx['moves'].push({
-      move: move,
-      compare_result: this.compare_number(move['guess'], this.secret['target'])
+      move: move.move,
+      compare_result: this.compare_number(move.move['guess'], this.secret['target'])
     })
   }
 
@@ -17,7 +18,7 @@ export class GuessNumberGame extends GameRuleBase {
     return '='
   }
 
-  validate_move_post_reqirements(ctx: MatchContext, move: PlayerMoveWarpper): boolean {
+  async validate_move_post_requirements(ctx: MatchContext, move: PlayerMoveWarpper) {
     if(move.move['guess'] === this.secret['target']){
       this.winnerIs(move.by).gameover()
       return GAME_SHALL_OVER
@@ -25,20 +26,20 @@ export class GuessNumberGame extends GameRuleBase {
     return GAME_SHALL_CONTINUE
   }
 
-  init_game(ctx: MatchContext): void {
+  async init_game(ctx: MatchContext) {
     this.secret['target'] = 114514
     ctx['moves'] = []
   }
 
-  validate_game_pre_reqirements(ctx: MatchContext): boolean {
+  async validate_game_pre_requirements(ctx: MatchContext) {
     if(ctx['players'].size === 1 && All(ctx['players'].values(), (gamer) => gamer.playerStatus === 'ready')) {
       return GAME_SHALL_BEGIN
     }
     return GAME_SHALL_WAIT;
   }
 
-  validate_move(ctx: MatchContext, move: PlayerMove): boolean {
-    if (move.hasOwnProperty('guess')) {
+  async validate_move(ctx: MatchContext, move: PlayerMoveWarpper) {
+    if (move.move.hasOwnProperty('guess')) {
       return true
     }
     return false

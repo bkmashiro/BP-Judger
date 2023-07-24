@@ -16,24 +16,24 @@ export class GameRuleProxy extends GameRuleBase {
     this.gameId = gameId
   }
 
-  validate_game_pre_reqirements(ctx: MatchContext): boolean {
+  async validate_game_pre_requirements(ctx: MatchContext) {
     console.log("validate_game_pre_reqirements", ctx)
     GameRuleGRPCService.Write(this.gameId, funcs.ValidateGamePreRequirements, GameRuleResp.fromObject(w(this.gameId, { action: "query", ctx })))
     return false
   }
-  validate_move_post_reqirements(ctx: MatchContext, move: PlayerMoveWarpper): boolean {
+  async validate_move_post_requirements(ctx: MatchContext, move: PlayerMoveWarpper) {
     console.log("validate_move_post_reqirements", ctx, move)
     return false
   }
-  validate_move(ctx: MatchContext, move: PlayerMoveWarpper): boolean {
+  async validate_move(ctx: MatchContext, move: PlayerMoveWarpper) {
     console.log("validate_move", ctx, move)
     return false
   }
-  accept_move(ctx: MatchContext, move: PlayerMoveWarpper): void {
+  async accept_move(ctx: MatchContext, move: PlayerMoveWarpper) {
     console.log("accept_move", ctx, move)
   }
 
-  init_game(ctx: MatchContext): void {
+  async init_game(ctx: MatchContext) {
     console.debug("init_game called", ctx)
     console.log("init_game", ctx)
 
@@ -44,8 +44,8 @@ export class GameRuleProxy extends GameRuleBase {
   }
 
   init() {
-    GameRuleGRPCService.addEventListener(this.gameId, onDataEvents.ValidateGamePreRequirements, this.validate_game_pre_reqirements)
-    GameRuleGRPCService.addEventListener(this.gameId, onDataEvents.ValidateMovePostRequirements, this.validate_move_post_reqirements)
+    GameRuleGRPCService.addEventListener(this.gameId, onDataEvents.ValidateGamePreRequirements, this.validate_game_pre_requirements)
+    GameRuleGRPCService.addEventListener(this.gameId, onDataEvents.ValidateMovePostRequirements, this.validate_move_post_requirements)
     GameRuleGRPCService.addEventListener(this.gameId, onDataEvents.ValidateMove, this.validate_move)
     GameRuleGRPCService.addEventListener(this.gameId, onDataEvents.AcceptMove, this.accept_move)
   }
@@ -226,14 +226,14 @@ export class GameRuleProxyManager extends GameRuleFactory {
 }
 
 
-const server = new grpc.Server();
-server.addService(UnimplementedGameRuleProxyServiceService.definition, new GameRuleGRPCService());
-server.bindAsync(
-  "0.0.0.0:8849",
-  grpc.ServerCredentials.createInsecure(),
-  () => server.start()
-);
-console.log("GameRuleProxyService is running")
+// const server = new grpc.Server();
+// server.addService(UnimplementedGameRuleProxyServiceService.definition, new GameRuleGRPCService());
+// server.bindAsync(
+//   "0.0.0.0:8849",
+//   grpc.ServerCredentials.createInsecure(),
+//   () => server.start()
+// );
+// console.log("GameRuleProxyService is running")
 
 
 
