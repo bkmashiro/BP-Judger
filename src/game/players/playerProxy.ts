@@ -31,7 +31,7 @@ export class PlayerProxy extends PlayerBase {
 // this will specify which proxy to use 
 export class PlayerProxyManager extends PlayerFactory {
 
-  static active_proxies: Map<PlayerID, IPlayer> = new Map()
+  static active_proxies: Map<PlayerID, PlayerBase> = new Map()
 
   newPlayer(): PlayerProxy {
     const proxy_player = new PlayerProxy(PlayerManager.newplayerID())
@@ -39,7 +39,7 @@ export class PlayerProxyManager extends PlayerFactory {
     return proxy_player
   }
 
-  static getPlayerProxy(uuid: PlayerID): IPlayer {
+  static getPlayerProxy(uuid: PlayerID): PlayerBase | undefined {
     return PlayerProxyManager.active_proxies.get(uuid)
   }
 
@@ -129,6 +129,7 @@ class PlayerProxyGRPCService extends UnimplementedPlayerProxyService {
       return new Promise((resolve, reject) => {
         PlayerProxyGRPCService.onData.set(playerId, (data: JsonMessage) => {
           const obj = JSON.parse(data.json)
+          // console.debug(`[PlayerProxyGRPCService.letPlayerMove] obj is `, obj)
           if(obj.hasOwnProperty('move')) {
             resolve(obj)
           } else {

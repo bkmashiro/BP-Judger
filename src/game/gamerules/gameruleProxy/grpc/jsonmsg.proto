@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+service GameRuleProxyService {
+  rpc ValidateGamePreRequirements(stream JSONMessage) returns (stream JSONMessage) {}
+  rpc ValidateMovePostRequirements(stream JSONMessage) returns (stream JSONMessage) {}
+  rpc ValidateMove(stream JSONMessage) returns (stream JSONMessage) {}
+  rpc AcceptMove(stream JSONMessage) returns (stream JSONMessage) {}
+  rpc InitGame(stream JSONMessage) returns (stream JSONMessage) {}
+}
+
+message JSONMessage {
+  string value = 1;
+}

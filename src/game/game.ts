@@ -2,9 +2,10 @@ import { randomUUID } from "crypto"
 import { GAME_SHALL_BEGIN, GAME_SHALL_OVER, GameRuleBase, IGameRuleConstructor } from "./gamerules/IGame"
 import { EventEmitter } from "events"
 import { GameID, GameName, IPlayer, PlayerBase, PlayerID } from "src/pipelining/modules/playerModule/player"
+import { GameRuleFactory } from "./gamerules/gameruleProxy/gameruleProxy"
 
 export type GameContext = {
-  "players": Map<PlayerID, IPlayer>,
+  "players": Record<PlayerID, IPlayer>,
   "gameId"?: GameID,
   "gameRule"?: GameRuleBase,
   "gameover"?: boolean,
@@ -23,7 +24,7 @@ export type MatchContext = {
 
 export class GameManager {
   static activeGames: Record<GameID, Game> = {}
-  static gameRules: Record<GameName, IGameRuleConstructor> = {}
+  static gameRules: Record<GameName, IGameRuleConstructor | GameRuleFactory> = {}
 
   public static newGame(gameruleName: GameName) {
     if (!GameManager.gameRules.hasOwnProperty(gameruleName)) {
@@ -32,18 +33,27 @@ export class GameManager {
     const gameRule = GameManager.gameRules[gameruleName]
 
     const gameId = GameManager.newGameID()
-    const game = new Game(gameId, new gameRule())
+    let gamerule = null
+    if (gameRule instanceof GameRuleFactory) {
+      gamerule = gameRule.newGameRuleProxy(gameId)
+    } else {
+      gamerule = new gameRule()
+    } 
+    const game = new Game(gameId, gamerule)
     GameManager.activeGames[gameId] = game
     return game
   }
 
-  static newGameID() { return randomUUID() }
+  static newGameID() { 
+    return "ac856d20-4e9c-409f-b1b3-d2d41a1df9a0"
+    // return randomUUID()
+  }
 
   static hasGame(gameId: GameID) { return GameManager.activeGames.hasOwnProperty(gameId) }
 
   static getGame(gameId: GameID) { return GameManager.activeGames[gameId] }
 
-  static registerGameRule(gameName: GameName, gameRule: IGameRuleConstructor) {
+  static registerGameRule(gameName: GameName, gameRule: IGameRuleConstructor | GameRuleFactory) {
     GameManager.gameRules[gameName] = gameRule
   }
 }
@@ -53,8 +63,9 @@ export const GAME_AUTO_BEGIN_WHEN_GAMER_READY = true
 export type GAMESTATE = 'organizing' | 'ready' | 'running' | 'gameover' | 'error'
 
 export class Game extends EventEmitter {
-  players: Map<string, IPlayer> = new Map()
+  players: Record<string, IPlayer> = {}
   uuid: string
+
   gameRule: GameRuleBase
   game_ctx: GameContext   // as a game context
   match_ctx: MatchContext = {} // to send to player 
@@ -71,13 +82,14 @@ export class Game extends EventEmitter {
       matchCtx: this.match_ctx,
     }
 
-
+    gameRule.on('ready', () => {
+      this.emit('status-change')
+    })
     // this is the onlt place to call this!
     this.gameRule.bind_ctx(this.game_ctx)
 
-    this.on('status-change', () => {
-      // console.log(`game ${this.uuid} status change, is ready? ${this.Ready}, state ${this.state}`)
-      if (this.Ready && this.state === 'organizing') {
+    this.on('status-change', async () => {
+      if (await this.Ready() && this.state === 'organizing') {
         this.emit('game-ready', this)
         if (GAME_AUTO_BEGIN_WHEN_GAMER_READY) {
           console.log(`game ${this.uuid} begin`)
@@ -88,7 +100,7 @@ export class Game extends EventEmitter {
   }
 
   async begin() {
-    this.gameRule.init_game(this.match_ctx)
+    await this.gameRule.init_game(this.match_ctx)
     this.emit('game-begin', this)
     this.setState('running')
     this.gamebeginCb && this.gamebeginCb(this)
@@ -100,16 +112,17 @@ export class Game extends EventEmitter {
       }
       turn += 1
       const moves = []
-      for (const [playerId, player] of this.players) {
+      for (const playerId in this.players) {
+        const player = this.players[playerId]
         const moveWarpper = (await player.move(this.match_ctx)) // TODO: make validation, and do not use magic string
         const move = moveWarpper['move'] // TODO: make validation, and do not use magic string
 
-        if (!this.gameRule.validate_move(this.match_ctx, move)) {
+        if (!await this.gameRule.validate_move(this.match_ctx, moveWarpper)) {
           throw new Error(`Game ${this.uuid} invalid move ${JSON.stringify(move)}`)
         }
         moves.push(move)
-        this.gameRule.accept_move(this.match_ctx, move)
-        if (this.gameRule.validate_move_post_reqirements(this.match_ctx, moveWarpper) === GAME_SHALL_OVER) {
+        await this.gameRule.accept_move(this.match_ctx, moveWarpper)
+        if (await this.gameRule.validate_move_post_requirements(this.match_ctx, moveWarpper) === GAME_SHALL_OVER) {
           gameNotOver = false
           break
         }
@@ -120,7 +133,7 @@ export class Game extends EventEmitter {
     this.setState('gameover')
 
     // close all player
-    for (const [playerId, player] of this.players) {
+    for (const player of Object.values(this.players)) {
       (player as PlayerBase).onGameover(this.game_ctx)
     }
     console.log(`game ${this.uuid} over`)
@@ -129,7 +142,7 @@ export class Game extends EventEmitter {
   }
 
   registerGamer(gamer: PlayerBase) {
-    this.players.set(gamer.uuid, gamer)
+    this.players[gamer.uuid] = gamer
     console.log(`player ${gamer.uuid} registered and waiting`)
     this.emit('player-registered', gamer)
     this.emit('status-change')
@@ -175,8 +188,9 @@ export class Game extends EventEmitter {
 
 
 
-  public get Ready(): boolean {
-    return this.gameRule.validate_game_pre_reqirements(this.game_ctx) === GAME_SHALL_BEGIN
+  public async Ready(): Promise<boolean> {
+    return await this.gameRule.validate_game_pre_requirements(this.game_ctx) === GAME_SHALL_BEGIN 
+    && await this.gameRule.isReady()
   }
 
 }
