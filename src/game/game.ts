@@ -78,18 +78,19 @@ export class Game extends EventEmitter {
     super()
     this.uuid = id
     this.gameRule = gameRule
-
+    
     this.game_ctx = {
       players: this.players,
       gameId: this.uuid,
       matchCtx: this.match_ctx,
     }
+    
+    this.gameRule.bind_ctx(this.game_ctx)
 
     gameRule.on('ready', () => {
       this.emit('status-change')
     })
     // this is the onlt place to call this!
-    this.gameRule.bind_ctx(this.game_ctx)
 
     this.on('status-change', async () => {
       const release = await this.mutex.acquire();
@@ -142,14 +143,14 @@ export class Game extends EventEmitter {
 
       // this.emit('turn', this, moves)
     }
-    this.setState('gameover')
-
+    
     // close all player
     for (const player of Object.values(this.players)) {
       (player as PlayerBase).onGameover(this.game_ctx)
     }
-    console.log(`game ${this.uuid} over`)
-    this.emit('gameover', this)
+
+    this.setState('gameover')
+    this.emit('gameover', this.game_ctx)
     this.gameoverCb && this.gameoverCb(this.game_ctx)
   }
 
@@ -196,9 +197,6 @@ export class Game extends EventEmitter {
       this.gamebeginCb = resolve
     })
   }
-
-
-
 
   public async Ready(): Promise<boolean> {
     return await this.gameRule.validate_game_pre_requirements(this.game_ctx) === GAME_SHALL_BEGIN 
