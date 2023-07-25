@@ -38,10 +38,10 @@ export class BKPileline {
 
   job_completion_strategy = {
     'next': () => { },
-    'stop': (msg) => { throw new Error(msg) },
+    'stop': (msg: string) => { throw new Error(msg) },
   }
 
-  static registerModule(module_name, module) {
+  static registerModule(module_name: string, module: IModule) {
     JobExecutor.register_module(module_name, module)
   }
 
@@ -55,7 +55,7 @@ export class JobExecutor {
   context: object
   job: object
 
-  constructor(job) {
+  constructor(job: object) {
     this.job = job
     this.context = {}
   }
@@ -78,7 +78,7 @@ export class JobExecutor {
     }
   }
 
-  async run_command(command, args) {
+  async run_command(command: string, args: string[]) {
     if (this.job.hasOwnProperty('jail')) {
       const jailConfig = this.job['jail']
       const executor = new JailedCommandExecutor(jailConfig)
@@ -93,7 +93,7 @@ export class JobExecutor {
     [x: string]: IModule;
   } = {}
 
-  async run_module(module, _with, ctx = undefined) {
+  async run_module(module: string, _with: object, ctx = undefined) {
     if (JobExecutor.modules.hasOwnProperty(module)) {
       return JobExecutor.modules[module].run(_with, ctx)
     } else {
@@ -109,7 +109,7 @@ export class JobExecutor {
     this.context = ctx
   }
 
-  public static register_module(module_name, module) {
+  public static register_module(module_name: string, module: IModule) {
     JobExecutor.modules[module_name] = module
   }
 }

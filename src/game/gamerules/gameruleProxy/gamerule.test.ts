@@ -1,123 +1,102 @@
 import * as grpc from "@grpc/grpc-js";
-import { GameRuleProxyServiceClient, GameRuleQuery, GameRuleResp, GameId } from "./grpc/ts/gamerule";
-import {GameRuleQuery as GameRuleQueryType } from "./grpc/gamerule.io"
+import { GameRuleProxyServiceClient } from "./rg-grpc/ts/jsonmsg";
+import { RG } from "./RG";
 
-const GameRuleProxy = new GameRuleProxyServiceClient("0.0.0.0:8849", grpc.credentials.createInsecure());
-console.log("Proxy up")
 
-function delay(ms: number) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
-let gameId = `ac856d20-4e9c-409f-b1b3-d2d41a1df9a0`
-
-function w(o) {
-  return {
-    gameId: { value: gameId },
-    data: { value: JSON.stringify(o) }
-  }
-}
+const GameRuleProxy = new GameRuleProxyServiceClient("0.0.0.0:30010", grpc.credentials.createInsecure());
 
 GameRuleProxy.waitForReady(Infinity, (err) => {
-  if(!err) {
+  if (!err) {
     console.log("Service Ready")
-  }else{
+  } else {
     console.log("Service Not Ready with error", err)
     return
   }
 })
 
-enum funcs {
-  ValidateGamePreRequirements = "ValidateGamePreRequirements",
-  ValidateMovePostRequirements = "ValidateMovePostRequirements",
-  ValidateMove = "ValidateMove",
-  AcceptMove = "AcceptMove",
-  InitGame = "InitGame",
+function delay(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+function compare_number(a: number, b: number){
+  if(a > b) return '>'
+  if(a < b) return '<'
+  return '='
 }
 
-const streams = {
-  [funcs.ValidateGamePreRequirements]: GameRuleProxy.ValidateGamePreRequirements(),
-  [funcs.ValidateMovePostRequirements]: GameRuleProxy.ValidateMovePostRequirements(),
-  [funcs.ValidateMove]: GameRuleProxy.ValidateMove(),
-  [funcs.AcceptMove]: GameRuleProxy.AcceptMove(),
-}
-const initial_stream = GameRuleProxy.InitGame()
-
-const extract = (data: GameRuleQuery) => {return JSON.parse(data.toObject().data.value) as GameRuleQueryType["data"] }
-
-const writeWarpped = (stream, data) => {
-  stream.write(GameRuleResp.fromObject(w(data)))
-}
-
-const sayHello = (stream) => {
-  console.log("sayHello")
-  stream.write(GameRuleResp.fromObject(w({ action: "ready" })))
-}
-
-let hasInit = false
-const initFuncs = () => {
-  streams[funcs.ValidateGamePreRequirements].on('data', (data: GameRuleQuery) => {
-    console.log("ValidateGamePreRequirements, query is", data.toObject())
-    const dat = extract(data)
-
-    const ctx = dat["ctx"]
-  })
-  streams[funcs.ValidateMovePostRequirements].on('data', (data: GameRuleQuery) => {
-    console.log("ValidateMovePostRequirements, query is", data.toObject())
-    const dat = extract(data)
-
-    const ctx = dat["ctx"]
-    const move = dat["move"]
-  })
-  streams[funcs.ValidateMove].on('data', (data: GameRuleQuery) => {
-    console.log("ValidateMove, query is", data.toObject())
-    const dat = extract(data)
-
-    const ctx = dat["ctx"]
-    const move = dat["move"]
-  })
-  streams[funcs.AcceptMove].on('data', (data: GameRuleQuery) => {
-    console.log("AcceptMove, query is", data.toObject())
-    const dat = extract(data)
-
-    const ctx = dat["ctx"]
-    const move = dat["move"]
-  })
-
-  Object.entries(streams).forEach(([k, v]) => {
-    sayHello(v)
-  })
-}
-
-initial_stream.on('data', (data: GameRuleQuery) => {
-  const dat = extract(data)
-  console.log("InitGame, query data is", dat)
-  if(!hasInit){
-    initFuncs()
-    hasInit = true
-  }
-  if(dat.action === "query") {
-    writeWarpped(initial_stream, { 
-      action: "return", 
-      data: { 
-        ctx: { 
-          moves:[],
-        },
-        secret: {
-          target: 114514
-        }
-      } 
-    })
+let gameId = `ac856d20-4e9c-409f-b1b3-d2d41a1df9a0`
+const secret = {}
+const InitGameStream = GameRuleProxy.InitGame()
+const rg1 = new RG(gameId, "InitGame", InitGameStream, (msg) => {
+  secret["target"] = 114514
+  return {
+    ctx: {
+      moves: [],
+    }
   }
 })
+const ValidateGamePreRequirementsStream = GameRuleProxy.ValidateGamePreRequirements()
+const rg2 = new RG(gameId, "ValidateGamePreRequirements", ValidateGamePreRequirementsStream, (msg) => {
+  const ctx = msg["ctx"]
+  const players = ctx["players"]
+  if (Object.entries(players).length === 1) {
+    return true
+  }
+  return false
+})
+const ValidateMovePostRequirementsStream = GameRuleProxy.ValidateMovePostRequirements()
+const rg3 = new RG(gameId, "ValidateMovePostRequirements", ValidateMovePostRequirementsStream, (msg) => {
+  const ctx = msg["ctx"]
+  const moveWarpped = msg["move"]
+  const move = moveWarpped['move']
+  let winner = null
+  let shallContinue = true
 
-sayHello(initial_stream)
+  if(move['guess'] === secret['target']) { // game shall over
+    console.warn(`[AcceptMove] ${moveWarpped['by']} win!`)
+    winner = moveWarpped['by']
+    shallContinue = false
+  }
+  return {
+    ctx,
+    shallContinue,
+    winner,
+  }
+})
+const ValidateMoveStream = GameRuleProxy.ValidateMove()
+const rg4 = new RG(gameId, "ValidateMove", ValidateMoveStream, (msg) => {
+  const ctx = msg["ctx"]
+  const move = msg["move"]["move"]
+  const by = msg["move"]["by"]
 
-
-
-
-
+  // console.log(`[ValidateMove] move`,move)
+  if (move.hasOwnProperty('guess')) {
+    console.log(`[ValidateMove] ${by} guess ${move['guess']}`)
+    if (typeof move['guess'] === 'number') {
+      return true
+    }
+  }
+  return false
+})
+const AcceptMoveStream = GameRuleProxy.AcceptMove()
+const rg5 = new RG(gameId, "AcceptMove", AcceptMoveStream, (msg) => {
+  const ctx = msg["ctx"]
+  const move = msg["move"]["move"]
+  ctx['moves'].push({
+    move,
+    compare_result: compare_number(move['guess'], secret['target'])
+  })
+  return ctx
+})
 
   ; (async () => {
-
+    try {
+      await rg1.Ready()
+      await rg2.Ready()
+      await rg3.Ready()
+      await rg4.Ready()
+      await rg5.Ready()
+    } catch (e) {
+      console.log(e)
+    }
 
   })()

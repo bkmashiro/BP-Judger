@@ -1,17 +1,7 @@
-import { PlayerMove, PlayerMoveWarpper } from "src/pipelining/modules/playerModule/player";
-import { GameContext, MatchContext } from "../game";
-import { EventEmitter } from "events";
-
-export interface IGameRule {
-  validate_game_pre_requirements(ctx: GameContext):  Promise<boolean>
-  validate_move_post_requirements(ctx: GameContext, move: PlayerMoveWarpper):  Promise<boolean>
-  validate_move(ctx: GameContext, move: PlayerMoveWarpper):  Promise<boolean>
-  accept_move(ctx: GameContext, move: PlayerMoveWarpper):  Promise<void>
-  init_game(ctx: GameContext):  Promise<void>
-}
-
-export type IGameRuleConstructor = (new () => GameRuleBase);
-export type GameRuleStatus = "ready" | "offline"
+import { EventEmitter } from "events"
+import { GameContext, MatchContext } from "../game"
+import { IGameRule } from "./IGameRule"
+import { PlayerMove, PlayerMoveWarpper } from "../players/IPlayer"
 
 export abstract class GameRuleBase extends EventEmitter implements IGameRule {
   status: GameRuleStatus = "offline" 
@@ -60,6 +50,11 @@ export abstract class GameRuleBase extends EventEmitter implements IGameRule {
     return Promise.resolve(true)
   }
 }
+
+export type IGameRuleConstructor = (new () => GameRuleBase);
+export type GameRuleStatus = "ready" | "offline"
+
+
 
 export const GAME_SHALL_OVER = false
 export const GAME_SHALL_CONTINUE = true

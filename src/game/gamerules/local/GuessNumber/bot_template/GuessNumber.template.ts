@@ -1,5 +1,5 @@
-import { PlayerProxyClient, JsonMessage } from '../../grpc/typescript/gamer-proxy'
 import * as grpc from "@grpc/grpc-js";
+import { PlayerProxyClient, JsonMessage } from "../../../../../game/players/playerProxy/grpc/typescript/gamer-proxy";
 
 export abstract class GuessNumberGameTemplate {
 

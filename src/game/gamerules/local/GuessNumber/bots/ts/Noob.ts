@@ -1,5 +1,6 @@
-import { PlayerBase, PlayerMoveWarpper } from "../../../../../pipelining/modules/playerModule/player"
-import { GameContext, MatchContext } from "../../../../game"
+import { PlayerMoveWarpper } from "../../../../../../game/players/IPlayer"
+import { PlayerBase } from "../../../../../../game/players/PlayerBase"
+import { GameContext, MatchContext } from "../../../../../game"
 
 export class Noob extends PlayerBase {
   move(context: MatchContext): Promise<PlayerMoveWarpper> {

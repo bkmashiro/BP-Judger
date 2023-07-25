@@ -1,7 +1,7 @@
-import { GAME_SHALL_OVER, GAME_SHALL_CONTINUE, GameRuleBase, IGameRule, IGameRuleConstructor, GAME_SHALL_WAIT, GAME_SHALL_BEGIN } from "../IGame";
-import { MatchContext } from "../../game";
-import { All } from "../../../utils";
-import { PlayerMove, PlayerMoveWarpper } from "../../../pipelining/modules/playerModule/player";
+import { MatchContext } from "../../../game";
+import { All } from "../../../../utils";
+import { GameRuleBase, GAME_SHALL_OVER, GAME_SHALL_CONTINUE, GAME_SHALL_BEGIN, GAME_SHALL_WAIT } from "../../GameRuleBase";
+import { PlayerMoveWarpper } from "../../../../game/players/IPlayer";
 
 export class GuessNumberGame extends GameRuleBase {
 

@@ -1,5 +1,5 @@
 import * as grpc from "@grpc/grpc-js";
-import { PlayerProxyClient, JsonMessage } from "../../../grpc/typescript/gamer-proxy";
+import { PlayerProxyClient, JsonMessage } from "../../../../../../game/players/playerProxy/grpc/typescript/gamer-proxy";
 
 const gamerProxy = new PlayerProxyClient("0.0.0.0:8848", grpc.credentials.createInsecure());
 
