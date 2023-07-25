@@ -1,13 +1,13 @@
 import { config } from "../configs/g++2";
 import { POSTModule } from "../pipelining/modules/testModules/POSTModule";
 import { BKPileline } from "../pipelining/pipelining";
-import { GuessNumberGame } from "./gamerules/GuessNumber/GuessNumberGame";
-import { Noob as NoobPlayer } from "./gamerules/GuessNumber/bots/ts/Noob";
+import { GuessNumberGame } from "./gamerules/local/GuessNumber/GuessNumberGame";
+import { Noob as NoobPlayer } from "./gamerules/local/GuessNumber/bots/ts/Noob";
 import { GameManager } from "./game";
-import { PlayerProxyManager as PlayerProxyFactory } from "./players/playerProxy";
+import { PlayerProxyManager as PlayerProxyFactory } from "./players/playerProxy/playerProxy";
 import { PlayerModule } from "../pipelining/modules/playerModule/playerModule";
-import { PlayerManager } from "../pipelining/modules/playerModule/player";
 import { GameRuleProxyManager as GameRuleProxyFactory } from "./gamerules/gameruleProxy/GameRuleProxy";
+import { PlayerManager } from "./players/PlayerFactory";
 
 
 ; (async () => {

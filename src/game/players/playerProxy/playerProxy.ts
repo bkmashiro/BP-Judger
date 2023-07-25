@@ -1,8 +1,10 @@
 import * as grpc from '@grpc/grpc-js';
-import { JsonMessage, UnimplementedPlayerProxyService } from "../gamerules/grpc/typescript/gamer-proxy"
-import { GameContext, MatchContext } from "../game";
-import { IPlayer, PlayerBase, PlayerFactory, PlayerID, PlayerManager, PlayerMoveWarpper } from '../../pipelining/modules/playerModule/player';
-import { playerProxyUrl } from '../../configs/config';
+import { JsonMessage, UnimplementedPlayerProxyService } from "./grpc/typescript/gamer-proxy"
+import { GameContext, MatchContext } from "../../game";
+import { playerProxyUrl } from '../../../configs/config';
+import { PlayerBase } from '../PlayerBase';
+import { PlayerMoveWarpper, PlayerID } from '../IPlayer';
+import { PlayerFactory, PlayerManager } from '../PlayerFactory';
 
 export class PlayerProxy extends PlayerBase {
 
@@ -194,11 +196,3 @@ class PlayerProxyGRPCService extends UnimplementedPlayerProxyService {
 
 }
 
-
-// const server = new grpc.Server();
-// server.addService(UnimplementedPlayerProxyService.definition, new PlayerProxyGRPCService());
-// server.bindAsync(
-//     "0.0.0.0:8848",
-//     grpc.ServerCredentials.createInsecure(),
-//     () => server.start()
-// );

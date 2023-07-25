@@ -1,16 +1,12 @@
 import { ServerDuplexStream } from "@grpc/grpc-js";
-import { JSONMessage, UnimplementedGameRuleProxyServiceService } from "./grpc/ts/jsonmsg";
-import { GameRuleBase } from "../IGame";
-import { MatchContext } from "src/game/game";
-import { GameID, PlayerMoveWarpper } from "src/pipelining/modules/playerModule/player";
+import { JSONMessage, UnimplementedGameRuleProxyServiceService } from "./rg-grpc/ts/jsonmsg";
+import { MatchContext } from "../../../game/game";
 import { RG } from "./RG";
 import * as grpc from '@grpc/grpc-js';
 import { gameRuleProxyUrl } from "../../../configs/config";
-
-export abstract class GameRuleFactory {
-  abstract newGameRuleProxy(uuid: string): GameRuleBase
-}
-
+import { GameRuleFactory } from "../GameRuleFactory";
+import { GameRuleBase } from "../GameRuleBase";
+import { GameID, PlayerMoveWarpper } from "../../../game/players/IPlayer";
 
 export class GameRuleProxy extends GameRuleBase {
   gameId: GameID // A game is always bind to a gamerule

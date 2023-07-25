@@ -1,5 +1,5 @@
 import * as grpc from "@grpc/grpc-js";
-import { GameRuleProxyServiceClient } from "./grpc/ts/jsonmsg";
+import { GameRuleProxyServiceClient } from "./rg-grpc/ts/jsonmsg";
 import { RG } from "./RG";
 
 

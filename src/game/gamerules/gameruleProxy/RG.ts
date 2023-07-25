@@ -1,11 +1,9 @@
-import { JSONMessage, UnimplementedGameRuleProxyServiceService, } from "./grpc/ts/jsonmsg"
-import { ClientDuplexStream, ServerDuplexStream, ServerUnaryCall, sendUnaryData } from "@grpc/grpc-js";
+import { JSONMessage } from "./rg-grpc/ts/jsonmsg"
 import { randomUUID } from "crypto";
-// import { ifNotNullDo } from "../../../utils";
 import * as grpc from '@grpc/grpc-js';
 import { EventEmitter } from "events";
-import { GameID, PlayerID } from "src/pipelining/modules/playerModule/player";
 import { GameRuleProxyManager } from "./GameRuleProxy";
+import { GameID, PlayerID } from "../../../game/players/IPlayer";
 export type RgSectionId = GameID | PlayerID
 export type RgData = {
   id: RgSectionId,

@@ -1,9 +1,9 @@
-import { randomUUID } from "crypto"
-import { GAME_SHALL_BEGIN, GAME_SHALL_OVER, GameRuleBase, IGameRuleConstructor } from "./gamerules/IGame"
 import { EventEmitter } from "events"
-import { GameID, GameName, IPlayer, PlayerBase, PlayerID } from "src/pipelining/modules/playerModule/player"
-import { GameRuleFactory } from "./gamerules/gameruleProxy/GameRuleProxy"
 import { Mutex } from 'async-mutex';
+import { GameID, GameName, IPlayer, PlayerID } from "./players/IPlayer"
+import { PlayerBase } from "./players/PlayerBase";
+import { GameRuleFactory } from "./gamerules/GameRuleFactory";
+import { GameRuleBase, IGameRuleConstructor, GAME_SHALL_OVER, GAME_SHALL_BEGIN } from "./gamerules/GameRuleBase";
 
 export type GameContext = {
   "players": Record<PlayerID, IPlayer>,
@@ -84,7 +84,7 @@ export class Game extends EventEmitter {
       gameId: this.uuid,
       matchCtx: this.match_ctx,
     }
-    
+
     this.gameRule.bind_ctx(this.game_ctx)
 
     gameRule.on('ready', () => {

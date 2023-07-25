@@ -1,7 +1,8 @@
 import { EventEmitter } from "events";
 import { IModule } from "../IModule"
-import { PlayerManager, IPlayer, PlayerBase } from "./player"
 import { GameManager } from "../../../game/game";
+import { PlayerBase } from "../../../game/players/PlayerBase";
+import { PlayerManager } from "../../../game/players/PlayerFactory";
 
 
 export class PlayerModule extends EventEmitter implements IModule {
