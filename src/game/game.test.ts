@@ -4,22 +4,24 @@ import { BKPileline } from "../pipelining/pipelining";
 import { GuessNumberGame } from "./gamerules/GuessNumber/GuessNumberGame";
 import { Noob as NoobPlayer } from "./gamerules/GuessNumber/bots/ts/Noob";
 import { GameManager } from "./game";
-import { PlayerProxyManager as PlayerProxyFactory, shutdownServer } from "./players/playerProxy";
+import { PlayerProxyManager as PlayerProxyFactory } from "./players/playerProxy";
 import { PlayerModule } from "../pipelining/modules/playerModule/playerModule";
 import { PlayerManager } from "../pipelining/modules/playerModule/player";
-import { GameRuleProxyManager } from "./gamerules/gameruleProxy/GameRuleProxy2";
+import { GameRuleProxyManager as GameRuleProxyFactory } from "./gamerules/gameruleProxy/GameRuleProxy";
 
 
 ; (async () => {
   GameManager.registerGameRule('GuessNumber', GuessNumberGame)
-  GameManager.registerGameRule('GameRuleProxy', new GameRuleProxyManager())
+  GameManager.registerGameRule('GameRuleProxy', new GameRuleProxyFactory())
   
   PlayerManager.registerGamerType('noob', NoobPlayer)                 // register prototype class
   PlayerManager.registerGamerType('proxy', new PlayerProxyFactory())  // register factory 
 
   // const guessNumberGame = GameManager.newGame('GuessNumber')
   const guessNumberGame = GameManager.newGame('GameRuleProxy')
+
   console.log(`Game ${guessNumberGame.uuid} created`)
+  
   BKPileline.registerModule('post', new POSTModule())
   BKPileline.registerModule('player', new PlayerModule())
 
@@ -38,6 +40,6 @@ import { GameRuleProxyManager } from "./gamerules/gameruleProxy/GameRuleProxy2";
 
   const ret = await guessNumberGame.whenGameOver();
   console.log(`Game ${guessNumberGame.uuid} is over, winner is `, ret.winner)
-  shutdownServer() // fix this!!!
-  GameRuleProxyManager.forceShutdownServer() // fix this!!!
+  PlayerProxyFactory.shutdownServer()// fix this!!!
+  GameRuleProxyFactory.shutdownServer() 
 })()

@@ -2,6 +2,7 @@ import * as grpc from '@grpc/grpc-js';
 import { JsonMessage, UnimplementedPlayerProxyService } from "../gamerules/grpc/typescript/gamer-proxy"
 import { GameContext, MatchContext } from "../game";
 import { IPlayer, PlayerBase, PlayerFactory, PlayerID, PlayerManager, PlayerMoveWarpper } from '../../pipelining/modules/playerModule/player';
+import { playerProxyUrl } from '../../configs/config';
 
 export class PlayerProxy extends PlayerBase {
 
@@ -31,6 +32,11 @@ export class PlayerProxy extends PlayerBase {
 // this will specify which proxy to use 
 export class PlayerProxyManager extends PlayerFactory {
 
+  constructor() {
+    super()
+    PlayerProxyManager.startServer()
+  }
+
   static active_proxies: Map<PlayerID, PlayerBase> = new Map()
 
   newPlayer(): PlayerProxy {
@@ -47,6 +53,28 @@ export class PlayerProxyManager extends PlayerFactory {
     console.log(`Player ${uuid} removed`)
     PlayerProxyManager.active_proxies.delete(uuid)
     PlayerProxyGRPCService.removePlayerPeer(uuid)
+  }
+
+  static server = new grpc.Server();
+
+  static startServer() {
+    this.server.addService(UnimplementedPlayerProxyService.definition, new PlayerProxyGRPCService());
+    this.server.bindAsync(
+      playerProxyUrl,
+      grpc.ServerCredentials.createInsecure(),
+      () => this.server.start()
+    );
+    console.log("PlayerProxyService is running on", playerProxyUrl)
+  }
+
+  static shutdownServer() {
+    this.server.tryShutdown((err) => {
+      if (err) {
+        console.log("Error in shutting down server", err)
+        return
+      }
+      console.log("Server shut down")
+    })
   }
 }
 
@@ -164,19 +192,13 @@ class PlayerProxyGRPCService extends UnimplementedPlayerProxyService {
     PlayerProxyGRPCService.onData.delete(uuid)
   }
 
-  
 }
 
-export function shutdownServer() {
-  server.tryShutdown(() => {
-    console.log(`Server shutdown successfully`)
-  })
-}
 
-const server = new grpc.Server();
-server.addService(UnimplementedPlayerProxyService.definition, new PlayerProxyGRPCService());
-server.bindAsync(
-    "0.0.0.0:8848",
-    grpc.ServerCredentials.createInsecure(),
-    () => server.start()
-);
+// const server = new grpc.Server();
+// server.addService(UnimplementedPlayerProxyService.definition, new PlayerProxyGRPCService());
+// server.bindAsync(
+//     "0.0.0.0:8848",
+//     grpc.ServerCredentials.createInsecure(),
+//     () => server.start()
+// );

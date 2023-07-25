@@ -5,7 +5,7 @@ import { randomUUID } from "crypto";
 import * as grpc from '@grpc/grpc-js';
 import { EventEmitter } from "events";
 import { GameID, PlayerID } from "src/pipelining/modules/playerModule/player";
-import { GameRuleProxyManager } from "./GameRuleProxy2";
+import { GameRuleProxyManager } from "./GameRuleProxy";
 export type RgSectionId = GameID | PlayerID
 export type RgData = {
   id: RgSectionId,
@@ -100,6 +100,7 @@ export class RG extends EventEmitter {
   }
 
   async doQuery(data: Omit<RgData, "id"> = {}, timeout = 1000): Promise<any> {
+    // console.log(`[RG.doQuery] ${this.funcName} of id ${this.id} is querying with data ${JSON.stringify(data)}`)
     if(!this.id) throw new Error("id is null")
     const data_with_id = { ...data, id: this.id } as RgData
     const _msgId = RG.newMsgId()
@@ -146,6 +147,10 @@ export class RG extends EventEmitter {
 
   static get(id: RgSectionId) {
     return RG.RGS.get(id)
+  }
+
+  close() {
+    this.stream.end()
   }
 }
 

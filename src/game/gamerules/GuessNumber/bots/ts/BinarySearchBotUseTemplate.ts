@@ -1,12 +1,12 @@
 import { GuessNumberGameTemplate } from "../../bot_template/GuessNumber.template";
 
 class MyBot extends GuessNumberGameTemplate {
-  l=0
-  r=1000000
+  l=114000
+  r=116000
   
   async Move(ctx: object) : Promise<object> {
     // sleep 1000ms
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    // await new Promise(resolve => setTimeout(resolve, 1000));
 
     let mid=(this.l+this.r)/2
     const gusses = ctx['moves']
@@ -18,7 +18,7 @@ class MyBot extends GuessNumberGameTemplate {
 
     const lastGuess = gusses[gusses.length - 1]
     const number = lastGuess['move']['guess']
-    console.log(`last guess is `, lastGuess)
+    // console.log(`last guess is `, lastGuess)
     const result = lastGuess['compare_result']
 
     if(result === '<') {

@@ -1,8 +1,7 @@
 import * as grpc from "@grpc/grpc-js";
-import { JSONMessage, GameRuleProxyServiceClient } from "./grpc/ts/jsonmsg";
+import { GameRuleProxyServiceClient } from "./grpc/ts/jsonmsg";
 import { RG } from "./RG";
-import { isNumberObject } from "util/types";
-import { isNumber } from "util";
+
 
 const GameRuleProxy = new GameRuleProxyServiceClient("0.0.0.0:30010", grpc.credentials.createInsecure());
 

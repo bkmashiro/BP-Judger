@@ -2,7 +2,8 @@ import { randomUUID } from "crypto"
 import { GAME_SHALL_BEGIN, GAME_SHALL_OVER, GameRuleBase, IGameRuleConstructor } from "./gamerules/IGame"
 import { EventEmitter } from "events"
 import { GameID, GameName, IPlayer, PlayerBase, PlayerID } from "src/pipelining/modules/playerModule/player"
-import { GameRuleFactory } from "./gamerules/gameruleProxy/gameruleProxy"
+import { GameRuleFactory } from "./gamerules/gameruleProxy/GameRuleProxy"
+import { Mutex } from 'async-mutex';
 
 export type GameContext = {
   "players": Record<PlayerID, IPlayer>,
@@ -71,6 +72,8 @@ export class Game extends EventEmitter {
   match_ctx: MatchContext = {} // to send to player 
   state: GAMESTATE = 'organizing'
 
+  mutex = new Mutex();
+
   constructor(id: string, gameRule: GameRuleBase) {
     super()
     this.uuid = id
@@ -89,12 +92,18 @@ export class Game extends EventEmitter {
     this.gameRule.bind_ctx(this.game_ctx)
 
     this.on('status-change', async () => {
-      if (await this.Ready() && this.state === 'organizing') {
-        this.emit('game-ready', this)
-        if (GAME_AUTO_BEGIN_WHEN_GAMER_READY) {
-          console.log(`game ${this.uuid} begin`)
-          this.begin()
+      const release = await this.mutex.acquire();
+      try {
+        if (this.state === 'organizing' && await this.Ready()) { // DO NOT SWAP THE ORDER OF THESE TWO CONDITIONS
+          this.emit('game-ready', this)
+          if (GAME_AUTO_BEGIN_WHEN_GAMER_READY) {
+            this.setState('running')
+            console.log(`game ${this.uuid} begin`)
+            this.begin()
+          }
         }
+      } finally {
+        release();
       }
     })
   }
@@ -102,7 +111,6 @@ export class Game extends EventEmitter {
   async begin() {
     await this.gameRule.init_game(this.match_ctx)
     this.emit('game-begin', this)
-    this.setState('running')
     this.gamebeginCb && this.gamebeginCb(this)
     let turn = 0
     let gameNotOver = true
@@ -120,10 +128,14 @@ export class Game extends EventEmitter {
         if (!await this.gameRule.validate_move(this.match_ctx, moveWarpper)) {
           throw new Error(`Game ${this.uuid} invalid move ${JSON.stringify(move)}`)
         }
+
         moves.push(move)
+
         await this.gameRule.accept_move(this.match_ctx, moveWarpper)
+
         if (await this.gameRule.validate_move_post_requirements(this.match_ctx, moveWarpper) === GAME_SHALL_OVER) {
           gameNotOver = false
+
           break
         }
       }

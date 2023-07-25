@@ -4,13 +4,15 @@ import { GameRuleBase } from "../IGame";
 import { MatchContext } from "src/game/game";
 import { GameID, PlayerMoveWarpper } from "src/pipelining/modules/playerModule/player";
 import { RG } from "./RG";
-import { GameRuleFactory } from "./gameruleProxy";
 import * as grpc from '@grpc/grpc-js';
+import { gameRuleProxyUrl } from "../../../configs/config";
+
+export abstract class GameRuleFactory {
+  abstract newGameRuleProxy(uuid: string): GameRuleBase
+}
 
 
-
-
-export class GameRuleProxyV2 extends GameRuleBase {
+export class GameRuleProxy extends GameRuleBase {
   gameId: GameID // A game is always bind to a gamerule
   
   rgs: Record<string, RG> = {
@@ -34,17 +36,16 @@ export class GameRuleProxyV2 extends GameRuleBase {
   }
 
   async validate_game_pre_requirements(ctx: MatchContext): Promise<boolean> {
-    if (!await this.isReady()) return false; //TODO remove this
+    if (!await this.isReady()) return false; 
     const rg = this.rgs["ValidateGamePreRequirements"]
     const ret = await rg.doQuery({ctx}) as boolean
-    // console.log(`[GameRuleProxyV2.validate_game_pre_reqirements] ret is ${ret}`)
     
     return ret
   }
+  
   async validate_move_post_requirements(ctx: MatchContext, move: PlayerMoveWarpper) : Promise<boolean> {
     const rg = this.rgs["ValidateMovePostRequirements"]
     const ret = await rg.doQuery({ctx, move})
-    // console.log(`[GameRuleProxyV2.validate_move_post_reqirements] ret is `, ret)
     if (!ret["shallContinue"]) {
       Object.assign(ctx, ret["ctx"])
       if (ret["winner"]) {
@@ -54,21 +55,18 @@ export class GameRuleProxyV2 extends GameRuleBase {
     }
     return ret["shallContinue"]
   }
+
   async validate_move(ctx: MatchContext, move: PlayerMoveWarpper) : Promise<boolean> {
-    // console.log(`[GameRuleProxyV2.validate_move] move is `, move)
     const rg = this.rgs["ValidateMove"]
     const ret = await rg.doQuery({ctx, move}) as boolean
-    // console.log(`[GameRuleProxyV2.validate_move] ret is `, ret)
     return ret
   }
+
   async accept_move(ctx: MatchContext, move: PlayerMoveWarpper): Promise<void> {
     const rg = this.rgs["AcceptMove"]
     const ret = await rg.doQuery({ctx, move})
-    // console.log(`[GameRuleProxyV2.accept_move] ret is `, ret)
     Object.assign(ctx, ret)
-    // console.log(`[GameRuleProxyV2.accept_move] new ctx is `, ctx)
   }
-
 
   register_rg(rg: RG) {
     // console.log(`[GameRuleProxyV2.register_rg] registering rg ${rg.funcName}`)
@@ -87,11 +85,24 @@ export class GameRuleProxyV2 extends GameRuleBase {
       if(this.status !== "ready"){
         this.status = "ready"
         this.emit("ready")
+        console.log(`GameRuleProxy ${this.gameId} is ready`)
       }
       return true
     }
   }
 
+  override gameover(): this {
+    super.gameover()
+    this.close()
+    GameRuleProxyManager.removeGameRuleProxy(this.gameId)
+    return this
+  }
+
+  public close() {
+    for (const rg of Object.values(this.rgs)) {
+      rg.close()
+    }
+  }
 }
 
 export class GameRuleProxyManager extends GameRuleFactory {
@@ -101,13 +112,13 @@ export class GameRuleProxyManager extends GameRuleFactory {
     GameRuleProxyManager.startServer()
   }
   newGameRuleProxy(uuid: string): GameRuleBase {
-    const proxy = new GameRuleProxyV2(uuid)
+    const proxy = new GameRuleProxy(uuid)
     GameRuleProxyManager.active_proxies.set(uuid, proxy)
     return proxy
   }
 
-  static getGameRuleProxy(uuid: GameID): GameRuleProxyV2 | undefined {
-    return GameRuleProxyManager.active_proxies.get(uuid) as GameRuleProxyV2
+  static getGameRuleProxy(uuid: GameID): GameRuleProxy | undefined {
+    return GameRuleProxyManager.active_proxies.get(uuid) as GameRuleProxy
   }
 
   static removeGameRuleProxy(uuid: GameID) {
@@ -119,18 +130,17 @@ export class GameRuleProxyManager extends GameRuleFactory {
   static startServer() {
     this.server.addService(UnimplementedGameRuleProxyServiceService.definition, new GameRuleGRPCService());
     this.server.bindAsync(
-      "0.0.0.0:30010",
+      gameRuleProxyUrl,
       grpc.ServerCredentials.createInsecure(),
       (err, port) => {
         if (err) {
           console.log("Error in binding port", err)
           return
         }
-        console.log("GameRuleProxyService is running on port", port)
         this.server.start()
       }
     );
-    console.log("GameRuleProxyService is running")
+    console.log("GameRuleProxyService is running on", gameRuleProxyUrl)
   }
 
   static shutdownServer() {
@@ -150,27 +160,22 @@ export class GameRuleProxyManager extends GameRuleFactory {
 
 export class GameRuleGRPCService extends UnimplementedGameRuleProxyServiceService {
   ValidateGamePreRequirements(call: ServerDuplexStream<JSONMessage, JSONMessage>): void {
-    console.log("ValidateGamePreRequirements")
     new RG(null, "ValidateGamePreRequirements", call, null)
   }
 
   ValidateMovePostRequirements(call: ServerDuplexStream<JSONMessage, JSONMessage>): void {
-    console.log("ValidateMovePostRequirements")
     new RG(null, "ValidateMovePostRequirements", call, null)
   }
 
   ValidateMove(call: ServerDuplexStream<JSONMessage, JSONMessage>): void {
-    console.log("ValidateMove")
     new RG(null, "ValidateMove", call, null)
   }
 
   AcceptMove(call: ServerDuplexStream<JSONMessage, JSONMessage>): void {
-    console.log("AcceptMove")
     new RG(null, "AcceptMove", call, null)
   }
 
   InitGame(call: ServerDuplexStream<JSONMessage, JSONMessage>): void {
-    console.log("InitGame")
     new RG(null, "InitGame", call, null)
   }
 }
