@@ -4,6 +4,7 @@ import { PlayerProxyClient, JsonMessage } from "../../../../../game/players/play
 export abstract class GuessNumberGameTemplate {
 
   private playerId: string
+  
   private server: string
   private proxy: PlayerProxyClient
   private stream: grpc.ClientDuplexStream<JsonMessage, JsonMessage>

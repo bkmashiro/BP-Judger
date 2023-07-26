@@ -1,3 +1,4 @@
+import { PlayerType } from "../../facade/PlayerBuilder"
 import { GamerConstructor } from "../game"
 import { IPlayerConstructor } from "./IPlayer"
 import { PlayerBase } from "./PlayerBase"
@@ -21,7 +22,7 @@ export class PlayerManager {
     }
   }
 
-  static registerGamerType(name: string, gamer: IPlayerConstructor | PlayerFactory) {
+  static registerGamerType(name: PlayerType, gamer: IPlayerConstructor | PlayerFactory) {
     PlayerManager.GamerType[name] = gamer
   }
 }

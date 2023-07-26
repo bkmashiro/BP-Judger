@@ -5,22 +5,13 @@ import { PlayerBase } from "../../../game/players/PlayerBase";
 import { PlayerManager } from "../../../game/players/PlayerFactory";
 
 
-export class PlayerModule implements IModule {
+export class GameModule implements IModule {
   async run(with_: object, ctx: object): Promise<Record<string,string>> {
-    const gamer = PlayerManager.newPlayer(with_['playerType'])
-
-    const gameId = with_['gameId']
-
-    if (!GameManager.hasGame(gameId)) {
-      throw new Error(`Game ${gameId} not found`)
-    }
-
-    const game = GameManager.getGame(gameId)
-
-    game.registerGamer(gamer)
-
+    const gameName = with_['gameName']
+    const game = GameManager.newGame(gameName)
     return {
-      'playerId': gamer.uuid,
+      'status': 'ready',
+      'gameId': game.uuid
     }
   }
 }

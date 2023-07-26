@@ -4,6 +4,7 @@ import { GameID, GameName, IPlayer, PlayerID } from "./players/IPlayer"
 import { PlayerBase } from "./players/PlayerBase";
 import { GameRuleFactory } from "./gamerules/GameRuleFactory";
 import { GameRuleBase, IGameRuleConstructor, GAME_SHALL_OVER, GAME_SHALL_BEGIN } from "./gamerules/GameRuleBase";
+import { GAME_AUTO_BEGIN_WHEN_READY, GAME_MAX_ROUND } from "../configs/config";
 
 export type GameContext = {
   "players": Record<PlayerID, IPlayer>,
@@ -59,8 +60,6 @@ export class GameManager {
   }
 }
 
-export const HARD_MAX_GAME_TURNS = 1000
-export const GAME_AUTO_BEGIN_WHEN_GAMER_READY = true
 export type GAMESTATE = 'organizing' | 'ready' | 'running' | 'gameover' | 'error'
 
 export class Game extends EventEmitter {
@@ -97,7 +96,7 @@ export class Game extends EventEmitter {
       try {
         if (this.state === 'organizing' && await this.Ready()) { // DO NOT SWAP THE ORDER OF THESE TWO CONDITIONS
           this.emit('game-ready', this)
-          if (GAME_AUTO_BEGIN_WHEN_GAMER_READY) {
+          if (GAME_AUTO_BEGIN_WHEN_READY) {
             this.setState('running')
             console.log(`game ${this.uuid} begin`)
             this.begin()
@@ -116,8 +115,8 @@ export class Game extends EventEmitter {
     let turn = 0
     let gameNotOver = true
     while (gameNotOver) {
-      if (turn > HARD_MAX_GAME_TURNS) {
-        throw new Error(`Game ${this.uuid} turns exceed ${HARD_MAX_GAME_TURNS}`)
+      if (turn > GAME_MAX_ROUND) {
+        throw new Error(`Game ${this.uuid} turns exceed ${GAME_MAX_ROUND}`)
       }
       turn += 1
       const moves = []
@@ -202,10 +201,6 @@ export class Game extends EventEmitter {
     return await this.gameRule.validate_game_pre_requirements(this.game_ctx) === GAME_SHALL_BEGIN 
     && await this.gameRule.isReady()
   }
-
-}
-
-export class GameHost {
 
 }
 

@@ -6,6 +6,8 @@ export class POSTModule implements IModule {
     const url = with_['url']
     const data = with_['data']['data']
 
-    return JSON.stringify((await axios.post(url + data)).data)
+    return {
+      ret:  JSON.stringify((await axios.post(url + data)).data)
+    }
   }
 }

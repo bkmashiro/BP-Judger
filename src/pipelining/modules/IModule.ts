@@ -1,5 +1,5 @@
 export interface IModule {
-  run(with_: WithContext, ctx: RuntimeContext): Promise<any>
+  run(with_: WithContext, ctx: RuntimeContext): Promise<Record<string, string>>
 }
 
 export type WithContext = object

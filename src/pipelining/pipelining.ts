@@ -22,6 +22,9 @@ export class BKPileline {
     const onSuccess = this.config['onSuccess'] ?? 'next'
     const onFailure = this.config['onFailure'] ?? 'stop'
     for (const job of jobs) {
+      if(!job.hasOwnProperty('name')) {
+        job.name = '<Anonymous>'
+      }
       const executor = new JobExecutor(job)
       executor.inject(this.context)
       try {
@@ -29,6 +32,14 @@ export class BKPileline {
         const ret = await executor.run()
         console.log(`Job ${job.name} finished returning ${ret}`)
         this.job_completion_strategy[onSuccess]()
+        // bind the return value to context
+        if (typeof ret === 'string') {
+          this.context[job.name] = ret
+        } else if (typeof ret === 'object') {
+          for (const key in ret) {
+            this.context[`${job.name}.${key}`] = ret[key]
+          }
+        }
       } catch (err) {
         console.log(`when executing job ${job.name}`, err)
         this.job_completion_strategy[onFailure](err.message)
