@@ -33,7 +33,6 @@ export class PlayerProxy extends PlayerBase {
 // PlayerProxyManager will set up gRPC server and handle the `move` function call from the player
 // this will specify which proxy to use 
 export class PlayerProxyManager extends PlayerFactory {
-
   constructor() {
     super()
     PlayerProxyManager.startServer()

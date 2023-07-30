@@ -632,6 +632,18 @@ export type NsJailConfig = {
   }
 }
 
+export const basic_jail_config = {
+  mount: [],
+  mount_readonly: ["/bin", "/lib", "/lib64/", "/usr/", "/sbin/", "/dev", "/dev/urandom"],
+  timeout: 10,
+  mem_max: 256,
+  user: 1919,
+  group: 1919,
+  pid_max: 32,
+  safetySetup: true,
+  env: {}
+}
+
 type CPULimit = {
   cpu: number,
   cpu_ms_per_sec?: number | "UNLIMITED"

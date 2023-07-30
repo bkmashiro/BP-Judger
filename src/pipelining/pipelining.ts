@@ -59,6 +59,47 @@ export class BKPileline {
   addCtx(dict: { [x: string]: any; }) {
     this.context = Object.assign(this.context, dict)
   }
+
+  public static fromConfig(config: object) {
+    return new BKPileline(config)
+  }
+
+  
+
+  
+}
+
+export function getConfig(configName: string) {
+  //check if exists
+  //TODO
+  const config_path = `./configs/${configName}.json`
+  if (! fs.promises.access(config_path)) { 
+    throw new Error(`Config ${configName} not found`)
+  }
+  return JSON.parse(fs.readFileSync(config_path, 'utf8'))
+}
+
+export function require_procedure(procedure_name: string) : ProcedurePiece {
+  const procedure_path = `./procedures/${procedure_name}.json`
+  if (! fs.promises.access(procedure_path)) {
+    throw new Error(`Procedure ${procedure_name} not found`)
+  }
+  return new ProcedurePiece(JSON.parse(fs.readFileSync(procedure_path, 'utf8')))
+}
+
+class ProcedurePiece {
+  raw: object
+  constructor(raw: object) {
+    this.raw = raw
+  }
+  named(name:string) {
+    this.raw['name'] = name
+    return this
+  }
+  compile(ctx:object={}) {
+    const jobs = recursive_render_obj(this.raw, ctx)
+    return jobs
+  }
 }
 
 export class JobExecutor {
