@@ -1,10 +1,23 @@
 import { Injectable } from '@nestjs/common';
 import { CreatePlayerDto } from './dto/create-player.dto';
 import { UpdatePlayerDto } from './dto/update-player.dto';
+import { Player } from './entities/player.entity';
+import { version } from 'os';
 
 @Injectable()
 export class PlayerService {
-  create(createPlayerDto: CreatePlayerDto) {
+  async create(createPlayerDto: CreatePlayerDto) {
+
+    const player = await Player.newProxyPlayer("test", ["test"], {
+      lang: "c++",
+      src: "#include <iostream>\nint main() { std::cout << \"Hello World!\" << std::endl; return 0; }",
+      filename: "main.cpp",
+      version: "c++11",
+      tags: ["test"]
+    })
+
+    await player.prepare()
+
     return 'This action adds a new player';
   }
 

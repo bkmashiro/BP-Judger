@@ -1,15 +1,16 @@
 import { PlayerProxyManager } from "../../../game/players/playerProxy/playerProxy";
 import { CreatePlayerDto } from "../dto/create-player.dto";
-import { CODE_FILE_TEMP_DIR } from "../../../configs/config";
+import { config } from "../../../configs/config";
 import { createHash } from 'crypto'
-import path from "path";
-import fs from "fs";
+import * as path from 'path'
+import * as fs from 'fs'
 import { BKPileline, require_procedure } from "../../../pipelining/pipelining";
 import { basic_jail_config } from "src/jail/NsjailRush";
+import { Logger } from "@nestjs/common";
 
 export type PlayerID = string
 
-export class Player {
+export class Player implements IPlayer {
   id: PlayerID
   type: PlayerType
   name: string
@@ -22,50 +23,58 @@ export class Player {
   }
   static proxyPlayerManager = new PlayerProxyManager()
 
-  static newProxyPlayer(name: string, tags: string[], code: Code): Player {
+  static async newProxyPlayer(name: string, tags: string[], code: Code): Promise<Player> {
     const player = new Player()
     const proxy = Player.proxyPlayerManager.newPlayer()
     player.id = proxy.uuid
     player.type = PlayerType.PROXY
     player.name = name
     player.tags = tags
-
-    //get code hash
-    const codeHash = createHash('md5').update(code.source).digest('hex')
-    // write code to file
-    const dir = CODE_FILE_TEMP_DIR
-    const filename = `${player.id}-${codeHash.substring(0, 8)}`
-    const filepath = path.resolve(dir, filename)
-
-    fs.writeFileSync(filepath, code.source)
-
-    // Use pipeline to compile and run code
-
-    // Use predefined config
-    // const pipeline = BKPileline.fromConfig(
-    //   BKPileline.getConfig('g++2')
-    // )
-    // Or use custom config
-    const pipeline = new BKPileline({
-      jobs:[
-        require_procedure('proxy-player-setup').named("proxyPlayer").compile(),
-        require_procedure('c++11').compile({
-          in_file_name: filepath,
-          out_file_name: `${filename}.out`,
-        }),
-        require_procedure('execute-jailed').compile({
-          file: `${filename}.out`,
-          args: ["proxyPlayer.playerId"],
-          jail: basic_jail_config
-        })
-      ],
-    })
-
-
-
+    player.code = code
     return player
   }
+  
+  async prepare(): Promise<void> {
+    if (this.type === PlayerType.PROXY) {
+      Logger.log(`Preparing player ${this.id}`)
+      // 1. generate code file
+      // 2. compile (if needed)
+      // 3. run
+      const code = this.code
+      if (!code) {
+        throw new Error('Code not found')
+      }
+      const codePath = path.resolve(path.join(config.CODE_FILE_TEMP_DIR, code.filename))
+      const codeOutPath = path.resolve(path.join(config.CODE_FILE_TEMP_DIR, `${code.filename}.out`))
+      const logPath = path.resolve(path.join(config.CODE_FILE_TEMP_DIR, `${this.id}.log`))
+      //make log file
+      await fs.promises.writeFile(logPath, '')
+      await fs.chown(logPath, config.uid, config.gid, (err) => {
+        if (err) {
+          throw err
+        }
+      })
+      await fs.promises.mkdir(path.dirname(codePath), { recursive: true })
+      await fs.promises.writeFile(codePath, code.src)
+      await BKPileline.predefined('g++_c++11_compile_and_run').ctx({
+        in_file_name: codePath,
+        out_file_name: codeOutPath,
+        gameId: this.id,
+        log: logPath,
+        cwd: config.CODE_FILE_TEMP_DIR,
+      }).run()
+
+    } else if (this.type === PlayerType.HUMAN) {
+      
+    } else if (this.type === PlayerType.LOCAL) {
+      
+    } else {
+      throw new Error('Unknown player type')
+    }
+  }
 }
+
+
 
 export enum PlayerType {
   HUMAN = "human",
@@ -75,10 +84,10 @@ export enum PlayerType {
 
 export interface IPlayer {
   type: PlayerType;
-  uuid: string;
+  id: PlayerID;
   name: string;
   tags?: string[];
-  fromObject(obj: any): IPlayer;
+  prepare(): void;
 }
 
 export interface IHumanPlayer extends IPlayer {
@@ -86,10 +95,11 @@ export interface IHumanPlayer extends IPlayer {
 }
 
 export interface Code {
-  name: string;
+  lang: string;
+  filename: string;
   version: string;
   tags: string[];
-  source: string;
+  src: string;
   [key: string]: any;
 }
 

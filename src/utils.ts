@@ -33,7 +33,11 @@ export function recursive_render_obj(obj: object, ctx: object) {
       return processedObj;
     }
   } else {
-    return render(obj, ctx);
+    if (typeof obj === 'string') {
+      return render(obj, ctx);
+    } else {
+      return obj;
+    }
   }
 }
 

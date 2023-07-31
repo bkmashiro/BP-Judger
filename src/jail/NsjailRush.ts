@@ -5,7 +5,7 @@ import * as path from 'path'
 import * as mkfifo from 'mkfifo'
 import { randomUUID } from "crypto"
 import { EventEmitter } from "events";
-import { path_to_nsjail } from "../configs/config"
+import { config as cfg } from "../configs/config"
  
 export class NsJail extends EventEmitter {
   options: Array<{
@@ -111,7 +111,8 @@ export class NsJail extends EventEmitter {
     }
 
     return new Promise((resolve, reject) => {
-      this.nsjailProcess = spawn(path_to_nsjail, this.toString().split(' '), {stdio: 'inherit'})
+      console.log(`exec command: ${cfg.path_to_nsjail} ${this.toString()}`)
+      this.nsjailProcess = spawn(cfg.path_to_nsjail, this.toString().split(' '), {stdio: 'inherit'})
       this.nsjailProcess?.on('data', (data) => {
         console.log(data.toString());
       });

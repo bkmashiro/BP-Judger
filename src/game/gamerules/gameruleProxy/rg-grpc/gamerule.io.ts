@@ -1,4 +1,4 @@
-import { PlayerID } from "../../../../pipelining/modules/playerModule/player";
+import { PlayerID } from "src/game/players/IPlayer"
 
 export type GameRuleResp = {
   playerId: PlayerID,

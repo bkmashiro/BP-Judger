@@ -2,11 +2,14 @@ import { JailedCommandExecutor, SystemCommandExecutor } from "./executors/comman
 import { IModule } from "./modules/IModule"
 import { recursive_render_obj, render } from "../utils"
 import * as fs from 'fs'
+import * as path from 'path'
+import { config } from "../configs/config"
+import { Logger } from "@nestjs/common"
 
 export class BKPileline {
-
   config: object
   context: object = {}
+  cache: object = {}
 
   constructor(config_path: string | object) {
     if (typeof config_path === 'object') {
@@ -14,7 +17,7 @@ export class BKPileline {
     } else {
       this.config = JSON.parse(fs.readFileSync(config_path, 'utf8'))
     }
-    this.context = this.config['constants']
+    this.context = this.config['constants'] ?? {}
   }
 
   async run() {
@@ -56,35 +59,37 @@ export class BKPileline {
     JobExecutor.register_module(module_name, module)
   }
 
-  addCtx(dict: { [x: string]: any; }) {
+  ctx(dict: { [x: string]: any; }) {
+    Logger.log(`context is ${JSON.stringify(this.context)}`)
+    Logger.log(`Injecting context ${JSON.stringify(dict)}`)
+
     this.context = Object.assign(this.context, dict)
+    return this
   }
 
   public static fromConfig(config: object) {
     return new BKPileline(config)
   }
 
-  
-
-  
-}
-
-export function getConfig(configName: string) {
-  //check if exists
-  //TODO
-  const config_path = `./configs/${configName}.json`
-  if (! fs.promises.access(config_path)) { 
-    throw new Error(`Config ${configName} not found`)
+  static predefined(pipelineName: string) {
+    return BKPileline.fromConfig(require_config(pipelineName))
   }
-  return JSON.parse(fs.readFileSync(config_path, 'utf8'))
-}
+} 
 
 export function require_procedure(procedure_name: string) : ProcedurePiece {
-  const procedure_path = `./procedures/${procedure_name}.json`
+  const procedure_path = path.resolve(config.configs_path,`./procedures/${procedure_name}.json`)
   if (! fs.promises.access(procedure_path)) {
     throw new Error(`Procedure ${procedure_name} not found`)
   }
   return new ProcedurePiece(JSON.parse(fs.readFileSync(procedure_path, 'utf8')))
+}
+
+export function require_config(config_name: string) : object {
+  const config_path = path.resolve(config.configs_path,`./predefined/${config_name}.json`)
+  if (!fs.promises.access(config_path)) {
+    throw new Error(`Config ${config_name} not found`)
+  }
+  return JSON.parse(fs.readFileSync(config_path, 'utf8'))
 }
 
 class ProcedurePiece {
@@ -96,6 +101,22 @@ class ProcedurePiece {
     this.raw['name'] = name
     return this
   }
+
+  with(ctx:object) {
+    this.raw['with'] = ctx
+    return this
+  }
+
+  set(kv: object) {
+    this.raw = Object.assign(this.raw, kv)
+    return this
+  }
+
+  jail(jailConfig: object) {
+    this.raw['jail'] = jailConfig
+    return this
+  }
+
   compile(ctx:object={}) {
     const jobs = recursive_render_obj(this.raw, ctx)
     return jobs
@@ -132,7 +153,7 @@ export class JobExecutor {
 
   async run_command(command: string, args: string[]) {
     if (this.job.hasOwnProperty('jail')) {
-      const jailConfig = this.job['jail']
+      const jailConfig = recursive_render_obj(this.job['jail'], this.context)
       const executor = new JailedCommandExecutor(jailConfig)
       return executor.run(command, args)
     } else {

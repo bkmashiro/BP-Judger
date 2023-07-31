@@ -4,7 +4,7 @@ import { GameID, GameName, IPlayer, PlayerID } from "./players/IPlayer"
 import { PlayerBase } from "./players/PlayerBase";
 import { GameRuleFactory } from "./gamerules/GameRuleFactory";
 import { GameRuleBase, IGameRuleConstructor, GAME_SHALL_OVER, GAME_SHALL_BEGIN } from "./gamerules/GameRuleBase";
-import { GAME_AUTO_BEGIN_WHEN_READY, GAME_MAX_ROUND } from "../configs/config";
+import { config } from "../configs/config";
 
 export type GameContext = {
   "players": Record<PlayerID, IPlayer>,
@@ -96,7 +96,7 @@ export class Game extends EventEmitter {
       try {
         if (this.state === 'organizing' && await this.Ready()) { // DO NOT SWAP THE ORDER OF THESE TWO CONDITIONS
           this.emit('game-ready', this)
-          if (GAME_AUTO_BEGIN_WHEN_READY) {
+          if (config.GAME_AUTO_BEGIN_WHEN_READY) {
             this.setState('running')
             console.log(`game ${this.uuid} begin`)
             this.begin()
@@ -115,8 +115,8 @@ export class Game extends EventEmitter {
     let turn = 0
     let gameNotOver = true
     while (gameNotOver) {
-      if (turn > GAME_MAX_ROUND) {
-        throw new Error(`Game ${this.uuid} turns exceed ${GAME_MAX_ROUND}`)
+      if (turn > config.GAME_MAX_ROUND) {
+        throw new Error(`Game ${this.uuid} turns exceed ${config.GAME_MAX_ROUND}`)
       }
       turn += 1
       const moves = []

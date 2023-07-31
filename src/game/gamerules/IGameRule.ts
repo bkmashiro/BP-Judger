@@ -1,5 +1,5 @@
-import { PlayerMoveWarpper } from "./../../pipelining/modules/playerModule/player"
 import { GameContext } from "../game"
+import { PlayerMoveWarpper } from "../players/IPlayer"
 
 export interface IGameRule {
   validate_game_pre_requirements(ctx: GameContext):  Promise<boolean>

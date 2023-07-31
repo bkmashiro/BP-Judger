@@ -3,7 +3,7 @@ import { JSONMessage, UnimplementedGameRuleProxyServiceService } from "./rg-grpc
 import { MatchContext } from "../../../game/game";
 import { RG } from "./RG";
 import * as grpc from '@grpc/grpc-js';
-import { gameRuleProxyUrl } from "../../../configs/config";
+import { config } from "../../../configs/config";
 import { GameRuleFactory } from "../GameRuleFactory";
 import { GameRuleBase } from "../GameRuleBase";
 import { GameID, PlayerMoveWarpper } from "../../../game/players/IPlayer";
@@ -126,7 +126,7 @@ export class GameRuleProxyManager extends GameRuleFactory {
   static startServer() {
     this.server.addService(UnimplementedGameRuleProxyServiceService.definition, new GameRuleGRPCService());
     this.server.bindAsync(
-      gameRuleProxyUrl,
+      config.gameRuleProxyUrl,
       grpc.ServerCredentials.createInsecure(),
       (err, port) => {
         if (err) {
@@ -136,7 +136,7 @@ export class GameRuleProxyManager extends GameRuleFactory {
         this.server.start()
       }
     );
-    console.log("GameRuleProxyService is running on", gameRuleProxyUrl)
+    console.log("GameRuleProxyService is running on", config.gameRuleProxyUrl)
   }
 
   static shutdownServer() {

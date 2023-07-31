@@ -24,4 +24,10 @@ export class Game {
     game.gameover = obj.gameover
     return game
   }
+
+  prepare() {
+    this.state = 'preparing'
+    this.gamerule.prepare()
+    this.players.forEach(player => player.prepare())
+  }
 }

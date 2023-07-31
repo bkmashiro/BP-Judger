@@ -1,7 +1,7 @@
 import * as grpc from '@grpc/grpc-js';
 import { JsonMessage, UnimplementedPlayerProxyService } from "./grpc/typescript/gamer-proxy"
 import { GameContext, MatchContext } from "../../game";
-import { playerProxyUrl } from '../../../configs/config';
+import { config } from '../../../configs/config';
 import { PlayerBase } from '../PlayerBase';
 import { PlayerMoveWarpper, PlayerID } from '../IPlayer';
 import { PlayerFactory, PlayerManager } from '../PlayerFactory';
@@ -61,11 +61,11 @@ export class PlayerProxyManager extends PlayerFactory {
   static startServer() {
     this.server.addService(UnimplementedPlayerProxyService.definition, new PlayerProxyGRPCService());
     this.server.bindAsync(
-      playerProxyUrl,
+      config.playerProxyUrl,
       grpc.ServerCredentials.createInsecure(),
       () => this.server.start()
     );
-    console.log("PlayerProxyService is running on", playerProxyUrl)
+    console.log("PlayerProxyService is running on", config.playerProxyUrl)
   }
 
   static shutdownServer() {

@@ -26,7 +26,7 @@ import { PlayerManager } from "./players/PlayerFactory";
   BKPileline.registerModule('player', new PlayerModule())
 
   const pipeline = new BKPileline(config)
-  pipeline.addCtx(
+  pipeline.ctx(
     {
       'out_file_name': 'helloworld.out',
       'in_file_name': 'helloworld.cpp',

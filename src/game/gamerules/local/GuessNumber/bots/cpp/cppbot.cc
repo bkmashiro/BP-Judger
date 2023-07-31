@@ -1,7 +1,7 @@
 #include <iostream>
 #include <grpcpp/grpcpp.h>
 #include <thread>
-#include "../../../grpc/cpp/player.grpc.pb.h"
+#include "../../../../../players/playerProxy/grpc/cpp/player.grpc.pb.h"
 
 #define LOG(x) std::cout << x << std::endl;
 
