@@ -325,6 +325,10 @@ export class NsJail extends EventEmitter {
     return this.add('env', `${k}=${v}`)
   }
 
+  keep_caps() {
+    return this.add('keep_caps')
+  }
+
   cap(cap: string) {
     return this.add('cap', cap)
   }
@@ -558,7 +562,8 @@ export class NsJail extends EventEmitter {
   }
 
   MemLimit(limit_MB: number) {
-    this.rlimit_as(limit_MB)
+    this.rlimit_as(limit_MB * 1024)
+    this.rlimit_fsize(limit_MB * 1024)
     this.cgroup_mem_max(limit_MB * 1024 * 1024)
     return this
   }
@@ -576,10 +581,14 @@ export class NsJail extends EventEmitter {
     if (config.mount_readonly) {
       config.mount_readonly.forEach(m => this.bindmount_ro(m))
     }
+    if (config.mount_tmpfs) {
+      config.mount_tmpfs.forEach(m => this.tmpfsmount(m, m))
+    }
     if (config.timeout) {
       this.time_limit(config.timeout)
     }
     if (config.mem_max) {
+      console.log('mem_max', config.mem_max)
       this.MemLimit(config.mem_max)
     }
     if (config.pid_max) {
@@ -608,6 +617,13 @@ export class NsJail extends EventEmitter {
         this.env(k, v)
       }
     }
+    if (config.keep_env) {
+      this.keep_env()
+    }
+    if (config.keep_caps) {
+      this.keep_caps()
+    }
+
     return this
   }
 
@@ -619,6 +635,7 @@ export class NsJail extends EventEmitter {
 export type NsJailConfig = {
   mount? : string[],
   mount_readonly: string[],
+  mount_tmpfs?: string[],
   timeout?: number,
   mem_max?: number,
   pid_max?: number,
@@ -631,6 +648,8 @@ export type NsJailConfig = {
   env?: {
     [key: string]: string
   }
+  keep_env?: boolean
+  keep_caps?: boolean
 }
 
 export const basic_jail_config = {

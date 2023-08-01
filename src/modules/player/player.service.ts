@@ -11,8 +11,8 @@ export class PlayerService {
     const player = await Player.newProxyPlayer("test", ["test"], {
       lang: "c++",
       src: "#include <iostream>\nint main() { std::cout << \"Hello World!\" << std::endl; return 0; }",
-      filename: "main.cpp",
-      version: "c++11",
+      filename: "test.cc",
+      version: "c++14",
       tags: ["test"]
     })
 

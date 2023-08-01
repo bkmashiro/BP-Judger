@@ -45,23 +45,22 @@ export class Player implements IPlayer {
         throw new Error('Code not found')
       }
       const codePath = path.resolve(path.join(config.CODE_FILE_TEMP_DIR, code.filename))
-      const codeOutPath = path.resolve(path.join(config.CODE_FILE_TEMP_DIR, `${code.filename}.out`))
+      const codeOutPath = path.resolve(path.join(config.CODE_FILE_TEMP_DIR, `/cmake/build/test`))
       const logPath = path.resolve(path.join(config.CODE_FILE_TEMP_DIR, `${this.id}.log`))
       //make log file
       await fs.promises.writeFile(logPath, '')
-      await fs.chown(logPath, config.uid, config.gid, (err) => {
-        if (err) {
-          throw err
-        }
-      })
+      await fs.promises.chown(logPath, config.uid, config.gid)
+      await fs.promises.chown(codePath, config.uid, config.gid)
       await fs.promises.mkdir(path.dirname(codePath), { recursive: true })
       await fs.promises.writeFile(codePath, code.src)
-      await BKPileline.predefined('g++_c++11_compile_and_run').ctx({
+      await BKPileline.predefined('cmake_g++_c++14_grpc_player_compile_and_run').ctx({
         in_file_name: codePath,
         out_file_name: codeOutPath,
         gameId: this.id,
         log: logPath,
         cwd: config.CODE_FILE_TEMP_DIR,
+        cmake_lists: "/home/shiyuzhe/lev/bp/bp-judger/src/configs/cmakes/cpp_bot_use_template/CMakeLists.txt",
+        cmake_lists_common: "/home/shiyuzhe/lev/bp/bp-judger/src/configs/cmakes/cpp_bot_use_template/common.cmake"
       }).run()
 
     } else if (this.type === PlayerType.HUMAN) {
