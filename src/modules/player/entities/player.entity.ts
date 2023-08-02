@@ -21,7 +21,7 @@ export class Player implements IPlayer {
     // TODO
     return newPlayer
   }
-  static proxyPlayerManager = new PlayerProxyManager()
+  static proxyPlayerManager = PlayerProxyManager.instance
 
   static async newProxyPlayer(name: string, tags: string[], code: Code): Promise<Player> {
     const player = new Player()
@@ -53,15 +53,13 @@ export class Player implements IPlayer {
       await fs.promises.chown(codePath, config.uid, config.gid)
       await fs.promises.mkdir(path.dirname(codePath), { recursive: true })
       await fs.promises.writeFile(codePath, code.src)
-      await BKPileline.predefined('cmake_g++_c++14_grpc_player_compile_and_run').ctx({
+      await BKPileline.predefined(this.code.pipeline).ctx({
         in_file_name: codePath,
         out_file_name: codeOutPath,
         gameId: this.id,
         log: logPath,
         cwd: config.CODE_FILE_TEMP_DIR,
-        cmake_lists: "/home/shiyuzhe/lev/bp/bp-judger/src/configs/cmakes/cpp_bot_use_template/CMakeLists.txt",
-        cmake_lists_common: "/home/shiyuzhe/lev/bp/bp-judger/src/configs/cmakes/cpp_bot_use_template/common.cmake"
-      }).run()
+      }).run() // Notice: in this pipeline, if the code signature hit cache, it will not compile
 
     } else if (this.type === PlayerType.HUMAN) {
       
@@ -100,6 +98,7 @@ export interface Code {
   tags: string[];
   src: string;
   [key: string]: any;
+  pipeline?: string;
 }
 
 export interface IBotPlayer extends IPlayer {
