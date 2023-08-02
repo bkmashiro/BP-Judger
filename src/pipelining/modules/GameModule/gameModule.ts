@@ -6,12 +6,13 @@ import { PlayerManager } from "../../../game/players/PlayerFactory";
 
 
 export class GameModule implements IModule {
-  async run(with_: object, ctx: object): Promise<Record<string,string>> {
+  async run(with_: object, ctx: object) {
     const gameName = with_['gameName']
     const game = GameManager.newGame(gameName)
     return {
-      'status': 'ready',
-      'gameId': game.uuid
+      __code__: 0,
+      status: 'ready',
+      gameId: game.uuid
     }
   }
 }

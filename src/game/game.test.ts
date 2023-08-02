@@ -12,10 +12,10 @@ import { PlayerManager } from "./players/PlayerFactory";
 
 ; (async () => {
   GameManager.registerGameRule('GuessNumber', GuessNumberGame) // Local TS gamerule
-  GameManager.registerGameRule('GameRuleProxy', new GameRuleProxyFactory()) // Remote gRPC gamerule
+  GameManager.registerGameRule('GameRuleProxy', GameRuleProxyFactory.instance) // Remote gRPC gamerule
   
   PlayerManager.registerGamerType('noob', NoobPlayer)                 // register prototype class
-  PlayerManager.registerGamerType('proxy', new PlayerProxyFactory())  // register factory 
+  PlayerManager.registerGamerType('proxy', PlayerProxyFactory.instance)  // register factory 
 
   // const guessNumberGame = GameManager.newGame('GuessNumber')
   const guessNumberGame = GameManager.newGame('GameRuleProxy')

@@ -6,14 +6,14 @@ import * as mkfifo from 'mkfifo'
 import { randomUUID } from "crypto"
 import { EventEmitter } from "events";
 import { config as cfg } from "../configs/config"
- 
+
 export class NsJail extends EventEmitter {
   options: Array<{
     key: string,
     value: string
   }> = []
   jailName = randomUUID()
- 
+
   path_to_command: string
   args: string[] = []
   signs: string[] = []
@@ -60,7 +60,7 @@ export class NsJail extends EventEmitter {
     return this
   }
 
-  async spawn(config?: SpawnOptionsWithoutStdio) : Promise<string> {
+  async spawn(config?: SpawnOptionsWithoutStdio): Promise<string> {
     if (getuid && getuid() !== 0 && getgid && getgid() !== 0) {
       throw new Error('You must run this program as root')
     }
@@ -111,14 +111,13 @@ export class NsJail extends EventEmitter {
     }
 
     return new Promise((resolve, reject) => {
-      console.log(`exec command: ${cfg.path_to_nsjail} ${this.toString()}`)
-      this.nsjailProcess = spawn(cfg.path_to_nsjail, this.toString().split(' '), {stdio: 'inherit'})
-      this.nsjailProcess?.on('data', (data) => {
-        console.log(data.toString());
-      });
+      this.nsjailProcess = spawn(cfg.path_to_nsjail, this.toString().split(' '), { stdio: 'pipe' })
+      // this.nsjailProcess?.on('data', (data) => {
+      //   console.log(data.toString());
+      // });
 
       this.nsjailProcess.stdout?.on('data', (data) => {
-        console.log(data.toString());
+        // console.log(data.toString());
         this.stdOut += data.toString();
       });
 
@@ -131,10 +130,10 @@ export class NsJail extends EventEmitter {
       });
 
       this.nsjailProcess.on('close', (code) => {
-        console.log(`child process exited with code ${code}`);
-        
+        // console.log(`child process exited with code ${code}`);
+
         if (code === 0) {
-          resolve(this.stdOut); // 返回输出字符串
+          resolve(this.stdOut);
         } else {
           reject(this.stdErr);
         }
@@ -588,7 +587,6 @@ export class NsJail extends EventEmitter {
       this.time_limit(config.timeout)
     }
     if (config.mem_max) {
-      console.log('mem_max', config.mem_max)
       this.MemLimit(config.mem_max)
     }
     if (config.pid_max) {
@@ -623,17 +621,26 @@ export class NsJail extends EventEmitter {
     if (config.keep_caps) {
       this.keep_caps()
     }
+    if (config.slient) {
+      this.silent()
+    }
+    if (config.quiet) {
+      this.quiet()
+    }
+    if (config.really_quiet) {
+      this.really_quiet()
+    }
 
     return this
   }
 
-  safetySetup(){
+  safetySetup() {
     this.disable_proc()
   }
 }
 
 export type NsJailConfig = {
-  mount? : string[],
+  mount?: string[],
   mount_readonly: string[],
   mount_tmpfs?: string[],
   timeout?: number,
@@ -641,7 +648,7 @@ export type NsJailConfig = {
   pid_max?: number,
   user?: number,
   group?: number,
-  mode? : 'LISTEN_TCP' | 'STANDALONE_ONCE' | 'STANDALONE_EXECVE' | 'STANDALONE_RERUN'
+  mode?: 'LISTEN_TCP' | 'STANDALONE_ONCE' | 'STANDALONE_EXECVE' | 'STANDALONE_RERUN'
   cwd?: string
   chroot?: string
   safetySetup?: boolean
@@ -650,6 +657,9 @@ export type NsJailConfig = {
   }
   keep_env?: boolean
   keep_caps?: boolean
+  slient?: boolean
+  quiet?: boolean
+  really_quiet?: boolean
 }
 
 export const basic_jail_config = {

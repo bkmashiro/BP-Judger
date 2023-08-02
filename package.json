@@ -31,6 +31,7 @@
     "async-mutex": "^0.4.0",
     "axios": "^1.4.0",
     "bull": "^4.10.4",
+    "chalk": "4",
     "google-protobuf": "^3.21.2",
     "grpc-tools": "^1.12.4",
     "log4js": "^6.9.1",

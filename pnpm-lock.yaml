@@ -1,9 +1,5 @@
 lockfileVersion: '6.0'
 
-settings:
-  autoInstallPeers: true
-  excludeLinksFromLockfile: false
-
 dependencies:
   '@docker/sdk':
     specifier: ^1.0.3
@@ -35,6 +31,9 @@ dependencies:
   bull:
     specifier: ^4.10.4
     version: 4.10.4
+  chalk:
+    specifier: '4'
+    version: 4.1.2
   google-protobuf:
     specifier: ^3.21.2
     version: 3.21.2
@@ -6776,3 +6775,7 @@ packages:
     resolution: {integrity: sha512-rVksvsnNCdJ/ohGc6xgPwyN8eheCxsiLM8mxuE/t/mOVqJewPuO1miLpTHQiRgTKCLexL4MeAFVagts7HmNZ2Q==}
     engines: {node: '>=10'}
     dev: true
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false

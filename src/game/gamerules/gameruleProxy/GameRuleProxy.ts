@@ -102,8 +102,18 @@ export class GameRuleProxy extends GameRuleBase {
 }
 
 export class GameRuleProxyManager extends GameRuleFactory {
+
+  private static _instance: GameRuleProxyManager
+
+  static get instance(): GameRuleProxyManager {
+    if (!this._instance) {
+      this._instance = new GameRuleProxyManager()
+    }
+    return this._instance
+  }
+
   static active_proxies: Map<GameID, GameRuleBase> = new Map()
-  constructor() {
+  private constructor() {
     super()
     GameRuleProxyManager.startServer()
   }

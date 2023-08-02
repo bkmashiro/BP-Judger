@@ -13,7 +13,8 @@ export class PlayerService {
       src: "#include <iostream>\nint main() { std::cout << \"Hello World!\" << std::endl; return 0; }",
       filename: "test.cc",
       version: "c++14",
-      tags: ["test"]
+      tags: ["test"],
+      pipeline: 'cmake_g++_c++14_grpc_player_compile_and_run'
     })
 
     await player.prepare()

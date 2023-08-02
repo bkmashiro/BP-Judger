@@ -5,12 +5,14 @@ import * as fs from 'fs'
 import * as path from 'path'
 import { config } from "../configs/config"
 import { Logger } from "@nestjs/common"
+import * as chalk from 'chalk';
 
 export class BKPileline {
   config: object
   context: object = {}
   cache: object = {}
-
+  private readonly logger = new Logger(BKPileline.name);
+  
   constructor(config_path: string | object) {
     if (typeof config_path === 'object') {
       this.config = config_path
@@ -20,10 +22,11 @@ export class BKPileline {
     this.context = this.config['constants'] ?? {}
   }
 
-  async run() {
+  async run() : Promise<object[]> {
     const jobs = this.config['jobs']
     const onSuccess = this.config['onSuccess'] ?? 'next'
     const onFailure = this.config['onFailure'] ?? 'stop'
+    const rets = []
     for (const job of jobs) {
       if(!job.hasOwnProperty('name')) {
         job.name = '<Anonymous>'
@@ -31,9 +34,17 @@ export class BKPileline {
       const executor = new JobExecutor(job)
       executor.inject(this.context)
       try {
-        console.log(`Running job ${job.name}`)
-        const ret = await executor.run()
-        console.log(`Job ${job.name} finished returning ${ret}`)
+        this.logger.log(`Running job ${job.name}`)
+        const startTime = Date.now()      // start time
+        
+        const ret = await executor.run()  // run job
+        rets.push(ret)
+
+        const endTime = Date.now()        // end time
+        const duration = endTime - startTime
+
+        this.logger.log(`${chalk.white('Job')} ${chalk.blueBright(job.name) } finished \t +${chalk.yellow(duration.toString(), 'ms')}`)
+
         this.job_completion_strategy[onSuccess]()
         // bind the return value to context
         if (typeof ret === 'string') {
@@ -46,7 +57,9 @@ export class BKPileline {
       } catch (err) {
         console.log(`when executing job ${job.name}`, err)
         this.job_completion_strategy[onFailure](err.message)
+        return err
       }
+      return rets
     }
   }
 
@@ -60,9 +73,6 @@ export class BKPileline {
   }
 
   ctx(dict: { [x: string]: any; }) {
-    Logger.log(`context is ${JSON.stringify(this.context)}`)
-    Logger.log(`Injecting context ${JSON.stringify(dict)}`)
-
     this.context = Object.assign(this.context, dict)
     return this
   }
