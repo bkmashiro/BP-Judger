@@ -13,7 +13,6 @@ import { Entity } from "typeorm";
 
 export type PlayerInstID = string
 
-@Entity()
 export class PlayerInstance implements IPlayerInst {
   id: PlayerInstID
   type: PlayerInstType

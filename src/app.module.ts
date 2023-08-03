@@ -8,9 +8,12 @@ import { PlayerModule } from './modules/player/player.module';
 import { BotModule } from './modules/bot/bot.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import configGenerator from './configs/config';
 
 @Module({
-  imports: [GameModule, 
+  imports: [
+    configGenerator(),
+    GameModule, 
     BullModule.forRoot({
       redis: {
         host: 'localhost',
