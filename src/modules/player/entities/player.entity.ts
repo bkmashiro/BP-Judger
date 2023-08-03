@@ -117,6 +117,7 @@ async function prepare_proxy_player(player: PlayerInstance) :Promise<string> {
       value: codeOutPath,
     }).compile()
   ).run()
+  console.log(ret2)
 
   return codeOutPath
 }

@@ -1,6 +1,7 @@
 import { Code } from "src/modules/player/entities/player.entity"
-import { Column, Index, PrimaryColumn, PrimaryGeneratedColumn } from "typeorm"
+import { Column, Entity, Index, PrimaryColumn, PrimaryGeneratedColumn } from "typeorm"
 
+@Entity()
 export class Bot {
   @PrimaryGeneratedColumn()
   id: number
@@ -11,7 +12,7 @@ export class Bot {
   by: number // user id
   @Column({type: 'json'})
   code: Code
-  @Column({nullable: true})
+  @Column({nullable: true, type: 'simple-array'})
   tags: string[]
   @Column({default: 'unknown'})
   lang: string

@@ -1,11 +1,14 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { CreatePlayerDto } from './dto/create-player.dto';
 import { UpdatePlayerDto } from './dto/update-player.dto';
 import { PlayerInstance } from './entities/player.entity';
 import { version } from 'os';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 
 @Injectable()
 export class PlayerService {
+
   async create(createPlayerDto: CreatePlayerDto) {
 
     const player = await PlayerInstance.newProxyPlayer("test", ["test"], {

@@ -9,6 +9,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
     TypeOrmModule.forFeature([GameruleInstance])
   ],
   controllers: [GameruleController],
-  providers: [GameruleService]
+  providers: [GameruleService],
+  exports: [GameruleService]
 })
 export class GameruleModule {}

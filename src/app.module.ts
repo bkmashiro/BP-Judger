@@ -20,12 +20,7 @@ import configGenerator from './configs/config';
         port: 6379,
       },
       prefix: 'bp',
-      limiter: {
-        max: 8,
-        duration: 114514, //TODO: change this
-      },
-      
-    }),
+    }), 
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
       imports: [ConfigModule],
