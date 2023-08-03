@@ -10,12 +10,14 @@ export class LRUCache<T> {
   private cache: Map<string, Node<T>>;
   private head: Node<T> | null;
   private tail: Node<T> | null;
+  private keySet: Set<string>;
 
   constructor(capacity: number) {
     this.capacity = capacity;
     this.cache = new Map();
     this.head = null;
     this.tail = null;
+    this.keySet = new Set();
   }
 
   private setHead(node: Node<T>): void {
@@ -76,6 +78,7 @@ export class LRUCache<T> {
         if (tailKey) {
           this.cache.delete(tailKey);
           this.removeNode(this.tail);
+          this.keySet.delete(tailKey);
         }
       }
 
@@ -88,7 +91,23 @@ export class LRUCache<T> {
       };
       this.setHead(newNode);
       this.cache.set(key, newNode);
+      this.keySet.add(key);
     }
+  }
+
+  has(key: string): boolean {
+    return this.keySet.has(key);
+  }
+
+  remove(key: string): boolean {
+    const node = this.cache.get(key);
+    if (node) {
+      this.cache.delete(key);
+      this.removeNode(node);
+      this.keySet.delete(key);
+      return true;
+    }
+    return false;
   }
 
   resize(newCapacity: number): void {
@@ -98,6 +117,7 @@ export class LRUCache<T> {
         if (tailKey) {
           this.cache.delete(tailKey);
           this.removeNode(this.tail);
+          this.keySet.delete(tailKey);
         }
       }
     }

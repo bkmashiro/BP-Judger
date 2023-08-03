@@ -1,16 +1,25 @@
 import { Processor, Process } from '@nestjs/bull';
 import { Job } from 'bull';
-import { Game } from './entities/game.entity';
-import { BotType, CreateGameDto, HumanType } from './dto/create-game.dto';
+import { BotPreparedType, BotType, CreateGameDto, HumanType } from './dto/create-game.dto';
 import { GameManager } from 'src/game/game';
 import { GameRuleProxy } from 'src/game/gamerules/gameruleProxy/GameRuleProxy';
-import { PlayerManager } from 'src/game/players/PlayerFactory';
-import { PlayerProxy } from 'src/game/players/playerProxy/playerProxy';
 import { BKPileline } from 'src/pipelining/pipelining';
-import { Player } from '../player/entities/player.entity';
+import { PlayerInstance } from '../player/entities/player.entity';
+import { Inject } from '@nestjs/common';
+import { Bot } from '../bot/entities/bot.entity';
+import { Repository } from 'typeorm';
+import { GameruleInstance } from '../gamerule/entities/gamerule.entity';
+import { NsJailConfig } from 'src/jail/NsjailRush';
 
 @Processor('game')
 export class GameConsumer {
+
+  constructor(
+    @Inject()
+    private readonly botRepository: Repository<Bot>,
+    private readonly gameruleRepository: Repository<GameruleInstance>,
+  ) {}
+
   @Process('game')
   async transcode(job: Job<CreateGameDto>) {
     const { data } = job;
@@ -44,15 +53,25 @@ export class GameConsumer {
     // prepare player proxies
     const bot_players = players.filter(player => player.type === 'bot') as BotType[]
     const human_players = players.filter(player => player.type === 'human') as HumanType[]
+
     for (const bot_player of bot_players) {
-      const botPlayerConfig = (1 as any).config // TODO: need to use this config to get bot
-      const player = await Player.newProxyPlayer(botPlayerConfig.name, botPlayerConfig.tags, botPlayerConfig.code)
-      await player.prepare()
+      const botPlayerConfig = await this.botRepository.findOne({where: {id: bot_player.botId}}) // TODO: need to use this config to get bot
+      const { memory_limit } = await this.gameruleRepository.findOne({where: {id: gameRuleId}}) // TODO: need to use this config to get bot
+      const player = await PlayerInstance.newProxyPlayer(botPlayerConfig.name, botPlayerConfig.tags, botPlayerConfig.code)
+      const { execPath } = await player.prepare() as BotPreparedType
+      const exec_pipeline = new BKPileline({
+        jobs: [
+          {
+            name: 'run_test_bot',
+            run: execPath,
+            jail: {
+              mem_max: memory_limit,
+            } as NsJailConfig
+          }
+        ]
+      })
+      exec_pipeline.run()
     }
-
-   
-
-
 
     job.progress(++progress);
 

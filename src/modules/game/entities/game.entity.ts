@@ -1,14 +1,15 @@
-import { IPlayer, Player } from "../../player/entities/player.entity"
-import { Gamerule } from "../../gamerule/entities/gamerule.entity"
+import { IPlayerInst, PlayerInstance } from "../../player/entities/player.entity"
+import { GameruleInstance } from "../../gamerule/entities/gamerule.entity"
 import { Gameover } from "./gameover.entity"
+import { Entity } from "typeorm"
 
 
 type GameState = 'setup' | 'preparing' | 'running' | 'finished' | 'error' | 'paused' | 'aborted' | 'unknown'
 
 export class Game {
   uuid: string
-  players: IPlayer[]
-  gamerule: Gamerule
+  players: IPlayerInst[]
+  gamerule: GameruleInstance
   state: GameState
   error?: string
   gameover?: Gameover
@@ -17,8 +18,8 @@ export class Game {
   static fromObject(obj: any): Game {
     const game = new Game()
     game.uuid = obj.uuid
-    game.players = obj.players.map((player: any) => Player.fromObject(player))
-    game.gamerule = Gamerule.fromObject(obj.gamerule)
+    game.players = obj.players.map((player: any) => PlayerInstance.fromObject(player))
+    game.gamerule = GameruleInstance.fromObject(obj.gamerule)
     game.state = obj.state
     game.error = obj.error
     game.gameover = obj.gameover

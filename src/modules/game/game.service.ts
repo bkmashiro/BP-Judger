@@ -9,6 +9,8 @@ import { PlayerManager } from 'src/game/players/PlayerFactory';
 import { PlayerProxyManager } from 'src/game/players/playerProxy/playerProxy';
 import { BKPileline } from 'src/pipelining/pipelining';
 import { PlayerModule } from 'src/pipelining/modules/playerModule/playerModule';
+import { CompileModule } from 'src/pipelining/modules/CompileModule/compileModule';
+import { FileCahceModule } from 'src/pipelining/modules/FileCacheModule/fileCacheModule';
 
 @Injectable()
 export class GameService {
@@ -19,6 +21,8 @@ export class GameService {
     GameManager.registerGameRule('GameRuleProxy', GameRuleProxyManager.instance) // Remote gRPC gamerule
     PlayerManager.registerGamerType('proxy', PlayerProxyManager.instance)  // register factory 
     BKPileline.registerModule('player', new PlayerModule())
+    BKPileline.registerModule('compile', new CompileModule())
+    BKPileline.registerModule('filecache', new FileCahceModule())
   }
 
   async create(createGameDto: CreateGameDto) {

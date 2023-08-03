@@ -7,88 +7,142 @@ import * as fs from 'fs'
 import { BKPileline, require_procedure } from "../../../pipelining/pipelining";
 import { basic_jail_config } from "src/jail/NsjailRush";
 import { Logger } from "@nestjs/common";
+import { FileCache } from "src/pipelining/modules/FileCacheModule/fileCacheModule";
+import { PreparedPlayerType } from "src/modules/game/dto/create-game.dto";
+import { Entity } from "typeorm";
 
-export type PlayerID = string
+export type PlayerInstID = string
 
-export class Player implements IPlayer {
-  id: PlayerID
-  type: PlayerType
+@Entity()
+export class PlayerInstance implements IPlayerInst {
+  id: PlayerInstID
+  type: PlayerInstType
   name: string
   tags: string[]
   code?: Code
-  static fromObject(player: CreatePlayerDto) : Player {
-    const newPlayer = new Player()
+
+  static fromObject(player: CreatePlayerDto): PlayerInstance {
+    const newPlayer = new PlayerInstance()
     // TODO
+    throw new Error("Method not implemented.");
     return newPlayer
   }
+  
   static proxyPlayerManager = PlayerProxyManager.instance
 
-  static async newProxyPlayer(name: string, tags: string[], code: Code): Promise<Player> {
-    const player = new Player()
-    const proxy = Player.proxyPlayerManager.newPlayer()
+  static async newProxyPlayer(name: string, tags: string[], code: Code): Promise<PlayerInstance> {
+    const player = new PlayerInstance()
+    const proxy = PlayerInstance.proxyPlayerManager.newPlayer()
     player.id = proxy.uuid
-    player.type = PlayerType.PROXY
+    player.type = PlayerInstType.PROXY
     player.name = name
     player.tags = tags
     player.code = code
     return player
   }
-  
-  async prepare(): Promise<void> {
-    if (this.type === PlayerType.PROXY) {
-      Logger.log(`Preparing player ${this.id}`)
-      // 1. generate code file
-      // 2. compile (if needed)
-      // 3. run
-      const code = this.code
-      if (!code) {
-        throw new Error('Code not found')
-      }
-      const codePath = path.resolve(path.join(config.CODE_FILE_TEMP_DIR, code.filename))
-      const codeOutPath = path.resolve(path.join(config.CODE_FILE_TEMP_DIR, `/cmake/build/test`))
-      const logPath = path.resolve(path.join(config.CODE_FILE_TEMP_DIR, `${this.id}.log`))
-      //make log file
-      await fs.promises.writeFile(logPath, '')
-      await fs.promises.chown(logPath, config.uid, config.gid)
-      await fs.promises.chown(codePath, config.uid, config.gid)
-      await fs.promises.mkdir(path.dirname(codePath), { recursive: true })
-      await fs.promises.writeFile(codePath, code.src)
-      await BKPileline.predefined(this.code.pipeline).ctx({
-        in_file_name: codePath,
-        out_file_name: codeOutPath,
-        gameId: this.id,
-        log: logPath,
-        cwd: config.CODE_FILE_TEMP_DIR,
-      }).run() // Notice: in this pipeline, if the code signature hit cache, it will not compile
 
-    } else if (this.type === PlayerType.HUMAN) {
-      
-    } else if (this.type === PlayerType.LOCAL) {
-      
+  async prepare(): Promise<PreparedPlayerType> {
+    if (this.type === PlayerInstType.PROXY) {
+      const execPath = await prepare_proxy_player(this)
+      Logger.log(`Player ${this.id} prepared at ${execPath}`)
+      return {
+        type: 'bot',
+        botId: this.id,
+        execPath,
+      }
+    } else if (this.type === PlayerInstType.HUMAN) {
+
+    } else if (this.type === PlayerInstType.LOCAL) {
+
     } else {
       throw new Error('Unknown player type')
     }
   }
 }
 
+async function prepare_proxy_player(player: PlayerInstance) :Promise<string> {
+  // 1. generate code file
+  // 2. compile (if needed)
+  const code = player.code
+  if (!code) {
+    throw new Error('Code not found')
+  }
+  const code_fingerprint = createHash('md5').update(code.src).digest('hex')
+  if (await FileCache.instance.has(code_fingerprint)) { // if cached, skip compile
+    const codeOutPath = await FileCache.instance.get(code_fingerprint)
+    return codeOutPath
+  }
+  const basePath = path.resolve(path.join(config.CODE_FILE_TEMP_DIR, code_fingerprint))
+  const codePath = path.resolve(path.join(basePath, code.filename))
+  const codeOutPath = path.resolve(path.join(basePath, `/cmake/build/test`))
+  await fs.promises.mkdir(path.dirname(codePath), { recursive: true })
+  await fs.promises.writeFile(codePath, code.src)
+  await fs.promises.chown(codePath, config.uid, config.gid)
+  // const ret = await BKPileline.fromConfig({
+  //   jobs: [
+  //     {
+  //       name: 'compile',
+  //       use: 'compile',
+  //       with: {
+  //         compile_pipeline_name: player.code.pipeline_name,
+  //         pipeline_ctx: {
+  //           in_file_name: codePath,
+  //           out_file_name: codeOutPath,
+  //           gameId: player.id,
+  //           cwd: config.CODE_FILE_TEMP_DIR,
+  //         },
+  //       }
+  //     },
+  //     {
+  //       name: "cache_set",
+  //       use: "filecache",
+  //       with: {
+  //         action: "set",
+  //         key: code_fingerprint,
+  //         value: codeOutPath,
+  //       }
+  //     }
+  //   ]
+  // }).run()
+
+  const ret2 = await BKPileline.fromJobs(
+    require_procedure('c++14_grpc_player_compile').with({
+      pipeline_ctx: {
+        in_file_name: codePath,
+        out_file_name: codeOutPath,
+        cwd: basePath,
+      },
+    }).compile(),
+    require_procedure('filecache_set').with({
+      key: code_fingerprint,
+      value: codeOutPath,
+    }).compile()
+  ).run()
+
+  return codeOutPath
+}
+
+async function run_proxy_player(execPath: string, jailConfig: object) {
+  
+}
 
 
-export enum PlayerType {
+export enum PlayerInstType {
   HUMAN = "human",
   PROXY = "proxy",
   LOCAL = "local", // NOT USED
 }
 
-export interface IPlayer {
-  type: PlayerType;
-  id: PlayerID;
+export interface IPlayerInst {
+  type: PlayerInstType;
+  id: PlayerInstID;
   name: string;
   tags?: string[];
   prepare(): void;
 }
 
-export interface IHumanPlayer extends IPlayer {
-  type: PlayerType.HUMAN;
+export interface IHumanPlayer extends IPlayerInst {
+  type: PlayerInstType.HUMAN;
 }
 
 export interface Code {
@@ -97,12 +151,12 @@ export interface Code {
   version: string;
   tags: string[];
   src: string;
+  pipeline_name?: string;
   [key: string]: any;
-  pipeline?: string;
 }
 
-export interface IBotPlayer extends IPlayer {
-  type: PlayerType.PROXY;
+export interface IBotPlayer extends IPlayerInst {
+  type: PlayerInstType.PROXY;
   code: Code;
 }
 

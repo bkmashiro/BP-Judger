@@ -5,6 +5,9 @@ import { GameModule } from './modules/game/game.module';
 import { BullModule } from '@nestjs/bull';
 import { GameruleModule } from './modules/gamerule/gamerule.module';
 import { PlayerModule } from './modules/player/player.module';
+import { BotModule } from './modules/bot/bot.module';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { TypeOrmModule } from '@nestjs/typeorm';
 
 @Module({
   imports: [GameModule, 
@@ -19,7 +22,28 @@ import { PlayerModule } from './modules/player/player.module';
         duration: 114514, //TODO: change this
       },
       
-    }), GameruleModule, PlayerModule,
+    }),
+    TypeOrmModule.forRootAsync({
+      inject: [ConfigService],
+      imports: [ConfigModule],
+      useFactory: async (config: ConfigService) => {
+        return {
+          type: 'mysql',
+          host: config.get('DB_HOST'),
+          port: config.get('DB_PORT'),
+          database: config.get('DB_DATABASE'),
+          username: config.get('DB_USERNAME'),
+          password: config.get('DB_PASSWORD'),
+          synchronize: config.get('DB_SYNC'),
+          entities: [
+            __dirname + '/**/*.entity{.ts,.js}'
+          ], 
+          timezone: '+08:00',
+        };
+      },
+    }),
+    
+    GameruleModule, PlayerModule, BotModule,
   ],
   controllers: [AppController],
   providers: [AppService],

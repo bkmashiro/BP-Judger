@@ -39,3 +39,4 @@ meta.ts
 cmake
 build
 src/configs/predefined/*.json
+*.env

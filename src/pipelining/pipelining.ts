@@ -27,6 +27,7 @@ export class BKPileline {
     const onSuccess = this.config['onSuccess'] ?? 'next'
     const onFailure = this.config['onFailure'] ?? 'stop'
     const rets = []
+
     for (const job of jobs) {
       if(!job.hasOwnProperty('name')) {
         job.name = '<Anonymous>'
@@ -59,8 +60,8 @@ export class BKPileline {
         this.job_completion_strategy[onFailure](err.message)
         return err
       }
-      return rets
     }
+    return rets
   }
 
   job_completion_strategy = {
@@ -81,8 +82,18 @@ export class BKPileline {
     return new BKPileline(config)
   }
 
+  public static fromJobs(...jobs: object[]) {
+    return new BKPileline({
+      jobs: jobs
+    })
+  }
+
   static predefined(pipelineName: string) {
     return BKPileline.fromConfig(require_config(pipelineName))
+  }
+
+  toObject() {
+    return this.config
   }
 } 
 
@@ -113,7 +124,10 @@ class ProcedurePiece {
   }
 
   with(ctx:object) {
-    this.raw['with'] = ctx
+    if (!this.raw.hasOwnProperty('with')) {
+      this.raw['with'] = {}
+    }
+    this.raw['with'] = Object.assign(this.raw['with'], ctx)
     return this
   }
 

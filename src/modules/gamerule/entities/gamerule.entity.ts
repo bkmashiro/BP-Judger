@@ -1,7 +1,15 @@
+import { Entity } from "typeorm"
+
 export type GameruleID = string
- 
-export class Gamerule {
-  static fromObject(gamerule: any): Gamerule {
+
+@Entity()
+export class GameruleInstance {
+  id: number
+  responce_time: number
+  memory_limit: number
+
+
+  static fromObject(gamerule: any): GameruleInstance {
     throw new Error("Method not implemented.");
   }
 
