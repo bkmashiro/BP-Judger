@@ -17,8 +17,8 @@ import { PlayerManager } from "./players/PlayerFactory";
   PlayerManager.registerGamerType('noob', NoobPlayer)                 // register prototype class
   PlayerManager.registerGamerType('proxy', PlayerProxyFactory.instance)  // register factory 
 
-  // const guessNumberGame = GameManager.newGame('GuessNumber')
-  const guessNumberGame = GameManager.newGame('GameRuleProxy')
+  const guessNumberGame = GameManager.newGame('GuessNumber')
+  // const guessNumberGame = GameManager.newGame('GameRuleProxy')
 
   console.log(`Game ${guessNumberGame.uuid} created`)
   

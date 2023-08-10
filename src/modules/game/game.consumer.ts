@@ -1,6 +1,6 @@
 import { Processor, Process } from '@nestjs/bull';
 import { Job } from 'bull';
-import { BotPreparedType, BotType, CreateGameDto, HumanType } from './dto/create-game.dto';
+import { BotPreparedType, BotType, CreateGameDto_test, HumanType } from './dto/create-game.dto';
 import { GameManager } from 'src/game/game';
 import { GameRuleProxy } from 'src/game/gamerules/gameruleProxy/GameRuleProxy';
 import { BKPileline } from 'src/pipelining/pipelining';
@@ -25,7 +25,7 @@ export class GameConsumer {
   @Process('game')
   async consume(_job: Job<unknown>) {
     console.log(`Processing job ${_job.data}`)
-    const job = _job as Job<CreateGameDto>
+    const job = _job as Job<CreateGameDto_test>
     const { data } = job;
     let progress = 0;
     // setup
@@ -75,6 +75,7 @@ export class GameConsumer {
           {
             name: 'run_test_bot',
             run: execPath,
+            
             jail: {
               mount: [
                 "/tmp/code",
@@ -82,12 +83,14 @@ export class GameConsumer {
               ],
               mount_readonly: [
                 "/bin",
+                "/sbin",
                 "/lib",
                 "/lib64/",
                 "/usr/",
                 "/sbin/",
                 "/dev",
-                "/dev/urandom"
+                "/dev/urandom",
+                "/run/netns"
               ],
               timeout: 10,
               mem_max: 256,
@@ -99,7 +102,8 @@ export class GameConsumer {
                 "PATH": "/bin:/usr/bin:/sbin:/usr/sbin:/usr/local/bin:/usr/local/sbin"
               },
               // really_quiet: true
-            } as NsJailConfig
+            } as NsJailConfig,
+            netns: 'jail'
           }
         ]
       })

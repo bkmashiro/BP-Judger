@@ -40,3 +40,4 @@ cmake
 build
 src/configs/predefined/*.json
 *.env
+caches

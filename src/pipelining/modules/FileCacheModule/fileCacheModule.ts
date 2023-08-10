@@ -75,7 +75,8 @@ class LocalFileCacheLayer implements ICacheLayer {
     // move to cache dir
     const cache_path = `${this.cache_dir}/${key}`
     this.lru.put(key, cache_path)
-    return fs.promises.rename(value, cache_path)
+    return fs.promises.copyFile(value, cache_path)
+    // return fs.promises.rename(value, cache_path)
   }
   has(key: string): Promise<boolean> {
     return Promise.resolve(this.lru.has(key))

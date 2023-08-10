@@ -1,7 +1,7 @@
 import { GameruleID } from "../../gamerule/entities/gamerule.entity"
 import { PlayerInstID } from "../../player/entities/player.entity"
 
-export class CreateGameDto {
+export class CreateGameDto_test {
   gameruleId: number
   players: (BotType | HumanType)[]
   configs: {
@@ -32,3 +32,23 @@ export type HumanPreparedType = {
 }
 
 export type PreparedPlayerType = BotPreparedType | HumanPreparedType
+
+export type ExecutableConfig = {
+  language: string
+  version: string
+  [key: string]: any
+}
+
+export type Executable = {
+  source: string
+  config: ExecutableConfig 
+}
+
+export class CreateGameDto {
+  gameruleId: Executable
+  players: Executable[]
+  configs: {
+    [key: string]: any
+  }
+}
+

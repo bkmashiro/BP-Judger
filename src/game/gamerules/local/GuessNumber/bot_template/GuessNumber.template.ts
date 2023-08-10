@@ -59,6 +59,7 @@ export abstract class GuessNumberGameTemplate {
         action: 'ready'
       }
     )
+    console.log(`Player ${this.playerId} ready sent`)
   }
 
   private send(data: object) {

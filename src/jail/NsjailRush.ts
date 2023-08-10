@@ -60,6 +60,11 @@ export class NsJail extends EventEmitter {
     return this
   }
 
+  /**
+   * @deprecated
+   * @param config 
+   * @returns 
+   */
   async spawn(config?: SpawnOptionsWithoutStdio): Promise<string> {
     if (getuid && getuid() !== 0 && getgid && getgid() !== 0) {
       throw new Error('You must run this program as root')
@@ -111,6 +116,7 @@ export class NsJail extends EventEmitter {
     }
 
     return new Promise((resolve, reject) => {
+      console.log(this.toString())
       this.nsjailProcess = spawn(cfg.path_to_nsjail, this.toString().split(' '), { stdio: 'pipe' })
       // this.nsjailProcess?.on('data', (data) => {
       //   console.log(data.toString());
@@ -191,6 +197,10 @@ export class NsJail extends EventEmitter {
 
   toString() {
     return `${this.toStringArgsArray().join(' ')} -- ${this.path_to_command} ${this.args.join(' ')}`
+  }
+
+  getCommand() {
+    return `${cfg.path_to_nsjail} ${this.toString()}`
   }
 
   toArray() {
@@ -552,6 +562,10 @@ export class NsJail extends EventEmitter {
     return this.add('disable_proc')
   }
 
+  disable_clone_newnet() {
+    return this.add('disable_clone_newnet')
+  }
+
   CPULimit(limit: CPULimit) {
     if (!limit.cpu_ms_per_sec || limit.cpu_ms_per_sec === "UNLIMITED") {
       limit.cpu_ms_per_sec = 0
@@ -630,6 +644,9 @@ export class NsJail extends EventEmitter {
     if (config.really_quiet) {
       this.really_quiet()
     }
+    if (config.disable_clone_newnet) {
+      this.disable_clone_newnet()
+    }
 
     return this
   }
@@ -660,6 +677,7 @@ export type NsJailConfig = {
   slient?: boolean
   quiet?: boolean
   really_quiet?: boolean
+  disable_clone_newnet?: boolean
 }
 
 export const basic_jail_config = {

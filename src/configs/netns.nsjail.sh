@@ -1,0 +1,1 @@
+sudo ip netns exec jail /path/to/nsjail -C ./testjail.config -- /usr/bin/bash -i

@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { CreateGameDto } from './dto/create-game.dto';
+import { CreateGameDto_test } from './dto/create-game.dto';
 import { UpdateGameDto } from './dto/update-game.dto';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
@@ -25,7 +25,7 @@ export class GameService {
     BKPileline.registerModule('filecache', new FileCahceModule())
   }
 
-  async create(createGameDto: CreateGameDto) {
+  async create_test(createGameDto: CreateGameDto_test) {
     const job = await this.gameQueue.add('game', createGameDto);
     console.log(job.id)
   }

@@ -65,7 +65,7 @@ export class GameRuleProxy extends GameRuleBase {
   }
 
   register_rg(rg: RG) {
-    // console.log(`[GameRuleProxyV2.register_rg] registering rg ${rg.funcName}`)
+    console.log(`[GameRuleProxyV2.register_rg] registering rg ${rg.funcName}`)
     const funcName = rg.funcName
     if (!(funcName in this.rgs)) throw new Error(`[GameRuleProxyV2.register_rg] rg ${funcName} not found`)
     if (this.rgs[funcName] === null) {

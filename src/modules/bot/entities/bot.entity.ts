@@ -8,7 +8,7 @@ export class Bot {
   @Column()
   name: string
   @Column()
-  @Index({unique: true}) // if merged, set this to a foreign key
+  @Index({unique: false}) // if merged, set this to a foreign key
   by: number // user id
   @Column({type: 'json'})
   code: Code

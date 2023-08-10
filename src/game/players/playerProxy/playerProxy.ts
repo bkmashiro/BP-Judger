@@ -104,6 +104,7 @@ class PlayerProxyGRPCService extends UnimplementedPlayerProxyService {
   Move(call: grpc.ServerDuplexStream<JsonMessage, JsonMessage>): void { // TODO: check if this will called many times by one client
     call.on('data', (data: JsonMessage) => {
       const obj = JSON.parse(data.json)
+      console.log(obj)
       const playerId = PlayerProxyGRPCService.updatePeers(obj, call)
     })
 

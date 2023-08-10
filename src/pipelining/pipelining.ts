@@ -1,4 +1,4 @@
-import { JailedCommandExecutor, SystemCommandExecutor } from "./executors/commandExecutor"
+import { JailedCommandAssembler, SystemCommandAssembler, runCommand } from "./executors/commandExecutor"
 import { IModule } from "./modules/IModule"
 import { recursive_render_obj, render } from "../utils"
 import * as fs from 'fs'
@@ -45,7 +45,7 @@ export class BKPileline {
         const duration = endTime - startTime
 
         this.logger.log(`${chalk.white('Job')} ${chalk.blueBright(job.name) } finished \t +${chalk.yellow(duration.toString(), 'ms')}`)
-
+        this.logger.log(`return value: ${chalk.greenBright(JSON.stringify(ret))}`)
         this.job_completion_strategy[onSuccess]()
         // bind the return value to context
         if (typeof ret === 'string') {
@@ -165,7 +165,10 @@ export class JobExecutor {
       const args = command.split(' ')
       command = args.shift()
 
-      return this.run_command(command, args)
+      const assembled = this.assemble_command(command, args)
+
+      await runCommand(assembled)
+
     } else if (this.job.hasOwnProperty('use')) {
       const module_name = this.job['use']
       const with_ = recursive_render_obj(this.job['with'], this.context)
@@ -175,15 +178,28 @@ export class JobExecutor {
     }
   }
 
-  async run_command(command: string, args: string[]) {
+  assemble_command(command: string, args: string[]) { //TODO: refactor this, use interceptors
+    let cmd: string = command
+    if (this.job.hasOwnProperty('netns')) {
+      Object.assign(this.job['jail'], {disable_clone_newnet: true})
+    }
+
     if (this.job.hasOwnProperty('jail')) {
       const jailConfig = recursive_render_obj(this.job['jail'], this.context)
-      const executor = new JailedCommandExecutor(jailConfig)
-      return executor.run(command, args)
+      const executor = new JailedCommandAssembler(jailConfig)
+      cmd = executor.assemble(cmd, args)
     } else {
-      const executor = new SystemCommandExecutor()
-      return executor.run(command, args)
+      const executor = new SystemCommandAssembler()
+      cmd = executor.assemble(cmd, args)
     }
+
+    if (this.job.hasOwnProperty('netns')) { //TODO clean this up
+      const netns = this.job['netns']
+      cmd = `/usr/sbin/ip netns exec ${netns} ${cmd}`;
+    }
+
+    console.log(cmd)
+    return cmd
   }
 
   static modules: {

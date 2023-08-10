@@ -21,6 +21,8 @@ export abstract class PlayerBase extends EventEmitter implements IPlayer {
     }
 
     this.playerStatus = status
+
+    console.log(`Player ${this.uuid} status changed to ${status}`)
     this.emit('status-change', status)
   }
   
