@@ -2,6 +2,7 @@ import { createHash } from "crypto";
 import { Code } from "./modules/player/entities/player.entity";
 import fs from 'fs/promises';
 
+
 export function delay(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
@@ -92,6 +93,7 @@ export function createCodeFingerprint(code: Code) {
 }
 
 // WARNING: TYPE GYMNASTICS AHEAD
+// YOU SHALL NOT CHANGE ANYTHING BELOW
 type FunctionArgs<T> = T extends (...args: infer Args) => any ? Args : never;
 
 type FileHelperTaskType = keyof typeof FileHelper.map;
@@ -108,10 +110,25 @@ export class FileHelper {
     this.tasks.push({ name, args });
     return this;
   }
-
+  private finished = []
   async run() {
     for (const task of this.tasks) {
-      await FileHelper.map[task.name].call(null, task.args);
+      try {
+        await FileHelper.map[task.name].apply(null, task.args);
+        this.finished.push(task)
+      } catch(err) {
+        throw err
+      }
+    }
+  }
+
+  async rollback() {
+    for (const task of this.finished.reverse()) {
+      try {
+        await FileHelper.rollback[task.name]?.apply(null, task.args);
+      } catch(err) {
+        throw err
+      }
     }
   }
 
@@ -126,5 +143,44 @@ export class FileHelper {
     copy: fs.copyFile,
     move: fs.rename,
     delete: fs.unlink,
+  };
+  
+  static rollback = {
+    mkdir: deleteNth(0),
+    write: deleteNth(0),
+    copy:  deleteNth(1),
+    move: swapArguments(fs.rename, 1, 0),
+  }
+}
+
+function deleteNth(n: number) {
+  return args => fs.unlink(args[n])
+}
+
+type StringFromNumber<N extends number> = `${N}`
+
+type ArgumentMap<Args extends any[], IndexFrom extends number, IndexTo extends number> = {
+  [Index in keyof Args]: Index extends StringFromNumber<IndexFrom>? Args[IndexTo] : Index extends  StringFromNumber<IndexTo> ? Args[IndexFrom]: Args[Index];
+};
+
+function swap<T>(arr: T[], i: number, j: number): void {
+  const temp = arr[i];
+  arr[i] = arr[j];
+  arr[j] = temp;
+}
+
+/** Note that you will not see the arg name change, but it's actually swapped. 
+ * 
+ * So make sure what are you doing!
+*/
+function swapArguments<T extends any[], IndexFrom extends number, IndexTo extends number>(
+  fn: (...args: T) => any,
+  indexFrom: IndexFrom,
+  indexTo: IndexTo
+): (...args: ArgumentMap<T, IndexFrom, IndexTo>) => any {
+  return (...args) => {
+    swap(args, indexFrom, indexTo)
+    const swappedArgs = args as ArgumentMap<T, IndexFrom, IndexTo>;
+    return fn.apply(null, swappedArgs);
   };
 }
