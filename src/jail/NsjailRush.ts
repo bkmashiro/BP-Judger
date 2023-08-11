@@ -576,8 +576,16 @@ export class NsJail extends EventEmitter {
 
   MemLimit(limit_MB: number) {
     this.rlimit_as(limit_MB * 1024)
-    this.rlimit_fsize(limit_MB * 1024)
-    this.cgroup_mem_max(limit_MB * 1024 * 1024)
+    return this
+  }
+
+  FileLimit_NoOpen(open_limit_cnt: number) {
+    this.rlimit_nofile(open_limit_cnt)
+    return this
+  }
+  
+  FileLimit_SizeWrite(write_limit_kb: number) {
+    this.rlimit_fsize(write_limit_kb * 1024)
     return this
   }
 
@@ -647,12 +655,19 @@ export class NsJail extends EventEmitter {
     if (config.disable_clone_newnet) {
       this.disable_clone_newnet()
     }
+    if (config.file_no_limit) {
+      this.FileLimit_NoOpen(config.file_no_limit)
+    }
+    if (config.file_sz_limit) {
+      this.FileLimit_SizeWrite(config.file_sz_limit)
+    }
 
     return this
   }
 
   safetySetup() {
     this.disable_proc()
+    //TODO more
   }
 }
 
@@ -678,6 +693,8 @@ export type NsJailConfig = {
   quiet?: boolean
   really_quiet?: boolean
   disable_clone_newnet?: boolean
+  file_no_limit?: number
+  file_sz_limit?: number
 }
 
 export const basic_jail_config = {

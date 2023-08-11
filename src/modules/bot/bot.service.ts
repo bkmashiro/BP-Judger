@@ -35,7 +35,7 @@ public:
 };
 
 int main() {
-  std::unique_ptr<MyBot> myBot = std::unique_ptr<MyBot>(new MyBot("127.0.0.1:8848", "d9668c37-6c28-4b46-8c88-6d550da1410d"));
+  std::unique_ptr<MyBot> myBot = std::unique_ptr<MyBot>(new MyBot("10.97.10.1:8848", "d9668c37-6c28-4b46-8c88-6d550da1410d"));
   myBot->Ready();
   LOG("MyBot End")
   return 0;

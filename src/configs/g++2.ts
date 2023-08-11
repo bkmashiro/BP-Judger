@@ -4,14 +4,14 @@ export const config = {
     //   name: "compile",
     //   run: "/usr/bin/g++ -O2 -std=c++11 -o ${out_file_name} ${in_file_name}",
     //   jail: {
-    //     mount: ["/home/shiyuzhe/lev/bp/bp-judger/src/dummy"],
+    //     mount: ["${@src}/dummy"],
     //     mount_readonly: ["/bin", "/lib", "/lib64/", "/usr/", "/sbin/", "/dev", "/dev/urandom"],
     //     timeout: 10,
     //     mem_max: 256,
     //     user: 1919,
     //     group: 1919,
     //     pid_max: 32,
-    //     cwd: "/home/shiyuzhe/lev/bp/bp-judger/src/dummy",
+    //     cwd: "${@src}/dummy",
     //     safetySetup: true,
     //     env: {
     //       PATH: "/bin:/usr/bin:/sbin:/usr/sbin:/usr/local/bin:/usr/local/sbin"

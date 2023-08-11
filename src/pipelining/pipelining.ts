@@ -3,13 +3,15 @@ import { IModule } from "./modules/IModule"
 import { recursive_render_obj, render } from "../utils"
 import * as fs from 'fs'
 import * as path from 'path'
-import { config } from "../configs/config"
+import { config, base_config } from "../configs/config"
 import { Logger } from "@nestjs/common"
 import * as chalk from 'chalk';
 
 export class BKPileline {
   config: object
-  context: object = {}
+  context: object = {
+    "@src": config.src_path,
+  }
   cache: object = {}
   private readonly logger = new Logger(BKPileline.name);
   
@@ -19,7 +21,9 @@ export class BKPileline {
     } else {
       this.config = JSON.parse(fs.readFileSync(config_path, 'utf8'))
     }
-    this.context = this.config['constants'] ?? {}
+    // this.context = this.config['constants'] ?? {}
+    this.context = Object.assign(this.context, recursive_render_obj(this.config['constants'], this.context))
+    console.log(`@src is ${this.context['@src']}`)
   }
 
   async run() : Promise<object[]> {

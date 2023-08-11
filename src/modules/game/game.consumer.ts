@@ -11,6 +11,7 @@ import { Repository } from 'typeorm';
 import { GameruleInstance } from '../gamerule/entities/gamerule.entity';
 import { NsJailConfig } from 'src/jail/NsjailRush';
 import { InjectRepository } from '@nestjs/typeorm';
+import { PlayerProxyManager } from 'src/game/players/playerProxy/playerProxy';
 
 @Processor('game')
 export class GameConsumer {
@@ -48,7 +49,7 @@ export class GameConsumer {
       jobs: [
         {
           name: 'run_test_gamerule',
-          run: '/usr/local/bin/ts-node /home/shiyuzhe/lev/bp/bp-judger/src/game/gamerules/gameruleProxy/gamerule.test.ts',
+          run: '/usr/local/bin/ts-node ${@src}/game/gamerules/gameruleProxy/gamerule.test.ts',
         }
       ]
     })
@@ -60,15 +61,17 @@ export class GameConsumer {
     console.log(bot_players)
     for (const bot_player of bot_players) {
       console.log(`bot ${bot_player.botId} is preparing`);
-      
       const botPlayerConfig = await this.botRepository.findOne({where: {id: bot_player.botId}}) // TODO: need to use this config to get bot
       console.log(`botPlayerConfig: ${botPlayerConfig}`);
       console.log(`gameRuleId ${gameRuleId}`)
       const { memory_limit } = await this.gameruleRepository.findOne({where: {id: gameRuleId}}) // TODO: need to use this config to get bot
       console.log(` memory_limit: ${memory_limit}`)
-      const player = await PlayerInstance.newProxyPlayer(botPlayerConfig.name, botPlayerConfig.tags, botPlayerConfig.code)
-      console.log(`player: ${player.id}`);
-      const { execPath } = await player.prepare() as BotPreparedType
+      const playerInst = await PlayerInstance.newProxyPlayer(botPlayerConfig.name, botPlayerConfig.tags, botPlayerConfig.code) 
+      // register players to game
+      // TODO: clean this
+      gameInstance.registerGamer(PlayerProxyManager.getPlayerProxy(playerInst.id))
+      console.log(`player: ${playerInst.id}`);
+      const { execPath } = await playerInst.prepare() as BotPreparedType
       console.log(`execPath: ${execPath}`);
       const exec_pipeline = new BKPileline({
         jobs: [

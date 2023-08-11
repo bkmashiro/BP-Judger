@@ -10,7 +10,7 @@ import { GameID, PlayerMoveWarpper } from "../../../game/players/IPlayer";
 
 export class GameRuleProxy extends GameRuleBase {
   gameId: GameID // A game is always bind to a gamerule
-  
+
   rgs: Record<string, RG> = {
     "ValidateGamePreRequirements": null,
     "ValidateMovePostRequirements": null,
@@ -22,26 +22,31 @@ export class GameRuleProxy extends GameRuleBase {
   constructor(gameId: GameID) {
     super()
     this.gameId = gameId
+    this.on("rg-registered", () => {
+      const _ = this.isReady()
+    })
   }
 
   async init_game(ctx: MatchContext): Promise<void> {
     const rg = this.rgs["InitGame"]
-    const ret = (await rg.doQuery({ctx}))
+    const ret = (await rg.doQuery({ ctx }))
     const ret_ctx = ret["ctx"]
     Object.assign(ctx, ret_ctx)
   }
 
+  msgQueue: MatchContext[] = []
   async validate_game_pre_requirements(ctx: MatchContext): Promise<boolean> {
-    if (!await this.isReady()) return false; 
+    console.log(`[validate_game_pre_requirements] called, ctx is ${JSON.stringify(ctx)}`)
+    await this.whenReady
     const rg = this.rgs["ValidateGamePreRequirements"]
-    const ret = await rg.doQuery({ctx}) as boolean
-    
+    const ret = await rg.doQuery({ ctx }) as boolean
+    console.log(`[GameRuleProxyV2.validate_game_pre_requirements] ret is ${ret}`)
     return ret
   }
-  
-  async validate_move_post_requirements(ctx: MatchContext, move: PlayerMoveWarpper) : Promise<boolean> {
+
+  async validate_move_post_requirements(ctx: MatchContext, move: PlayerMoveWarpper): Promise<boolean> {
     const rg = this.rgs["ValidateMovePostRequirements"]
-    const ret = await rg.doQuery({ctx, move})
+    const ret = await rg.doQuery({ ctx, move })
     if (!ret["shallContinue"]) {
       Object.assign(ctx, ret["ctx"])
       if (ret["winner"]) {
@@ -52,20 +57,20 @@ export class GameRuleProxy extends GameRuleBase {
     return ret["shallContinue"]
   }
 
-  async validate_move(ctx: MatchContext, move: PlayerMoveWarpper) : Promise<boolean> {
+  async validate_move(ctx: MatchContext, move: PlayerMoveWarpper): Promise<boolean> {
     const rg = this.rgs["ValidateMove"]
-    const ret = await rg.doQuery({ctx, move}) as boolean
+    const ret = await rg.doQuery({ ctx, move }) as boolean
     return ret
   }
 
   async accept_move(ctx: MatchContext, move: PlayerMoveWarpper): Promise<void> {
     const rg = this.rgs["AcceptMove"]
-    const ret = await rg.doQuery({ctx, move})
+    const ret = await rg.doQuery({ ctx, move })
     Object.assign(ctx, ret)
   }
 
   register_rg(rg: RG) {
-    console.log(`[GameRuleProxyV2.register_rg] registering rg ${rg.funcName}`)
+    // console.log(`[GameRuleProxyV2.register_rg] registering rg ${rg.funcName}`)
     const funcName = rg.funcName
     if (!(funcName in this.rgs)) throw new Error(`[GameRuleProxyV2.register_rg] rg ${funcName} not found`)
     if (this.rgs[funcName] === null) {
@@ -73,18 +78,26 @@ export class GameRuleProxy extends GameRuleBase {
     } else {
       throw new Error(`[GameRuleProxyV2.register_rg] rg ${funcName} already registered`)
     }
+    this.emit("rg-registered", rg)
   }
+
+  whenReady = new Promise((resolve, reject) => {
+    this.once("ready", resolve)
+  })
+
+
 
   public async isReady(): Promise<boolean> {
     // only if all rgs are registered
-    if(Object.values(this.rgs).every(rg => rg !== null)){
-      if(this.status !== "ready"){
+    if (Object.values(this.rgs).every(rg => rg !== null)) {
+      if (this.status !== "ready") {
         this.status = "ready"
         this.emit("ready")
         console.log(`GameRuleProxy ${this.gameId} is ready`)
       }
       return true
     }
+    return false
   }
 
   override gameover(): this {
