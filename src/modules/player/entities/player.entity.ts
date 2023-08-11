@@ -93,7 +93,7 @@ async function prepare_code(code :Code) {
   const basePath = path.resolve(config.CODE_FILE_TEMP_DIR, code_fingerprint)
   const codePath = path.resolve(basePath, code.filename)
   const codeOutPath = path.resolve(basePath, `/cmake/build/test`)
-
+  //TODO add error handling
   await new FileHelper()
     .push('mkdir', basePath)
     .push('write', codePath, code.src)
