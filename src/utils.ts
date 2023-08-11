@@ -1,3 +1,7 @@
+import { createHash } from "crypto";
+import { Code } from "./modules/player/entities/player.entity";
+import fs from 'fs/promises';
+
 export function delay(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
@@ -77,4 +81,50 @@ export function ifNotNullDo(func: any, ...args: any[]) {
   if (func) {
     func(...args)
   }
+}
+
+export function createCodeFingerprint(code: Code) {
+  return createHash('sha256')
+    .update(code.src)
+    .update(code.lang)
+    .update(code.version)
+    .digest('hex')
+}
+
+// WARNING: TYPE GYMNASTICS AHEAD
+type FunctionArgs<T> = T extends (...args: infer Args) => any ? Args : never;
+
+type FileHelperTaskType = keyof typeof FileHelper.map;
+
+type FileHelperTask<T extends FileHelperTaskType> = {
+  name: T;
+  args: FunctionArgs<typeof FileHelper.map[T]>;
+};
+
+export class FileHelper {
+  private tasks: FileHelperTask<FileHelperTaskType>[] = [];
+
+  push<T extends FileHelperTaskType>(name: T, ...args: FunctionArgs<typeof FileHelper.map[T]>) {
+    this.tasks.push({ name, args });
+    return this;
+  }
+
+  async run() {
+    for (const task of this.tasks) {
+      await FileHelper.map[task.name].call(null, task.args);
+    }
+  }
+
+  static map = {
+    mkdir: async (target: string) => {
+      await fs.mkdir(target, { recursive: true });
+    },
+    write: fs.writeFile,
+    chown: fs.chown,
+    chgrp: fs.chown,
+    chmod: fs.chmod,
+    copy: fs.copyFile,
+    move: fs.rename,
+    delete: fs.unlink,
+  };
 }

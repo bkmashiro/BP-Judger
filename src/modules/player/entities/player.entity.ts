@@ -8,6 +8,7 @@ import { BKPileline, require_procedure } from "../../../pipelining/pipelining";
 import { Logger } from "@nestjs/common";
 import { FileCache } from "src/pipelining/modules/FileCacheModule/fileCacheModule";
 import { PreparedPlayerType } from "src/modules/game/dto/create-game.dto";
+import { FileHelper, createCodeFingerprint } from "src/utils";
 
 export type PlayerFacadeID = string
 
@@ -67,27 +68,40 @@ export class PlayerFacade implements IPlayerFacade {
 }
 // TODO: clean this
 // TODO: use strategy pattern
-async function prepare_proxy_player(player: PlayerFacade) :Promise<string> {
-  // 1. generate code file
+async function prepare_proxy_player({ code }: PlayerFacade) :Promise<string> {
+  // 1. prepare code file
   // 2. compile (if needed)
-  const code = player.code
-  if (!code) {
-    throw new Error('Code not found')
-  }
-  const code_fingerprint = createHash('md5').update(code.src).digest('hex')
+  
+  const executable = prepare_code(code)
+
+
+
+  return executable
+}
+
+
+
+async function prepare_code(code :Code) {
+  if (!code) throw new Error('Code not found')
+  
+  const code_fingerprint = createCodeFingerprint(code)
   if (await FileCache.instance.has(code_fingerprint)) { // if cached, skip compile
     const codeOutPath = await FileCache.instance.get(code_fingerprint)
     return codeOutPath
   }
-  const basePath = path.resolve(path.join(config.CODE_FILE_TEMP_DIR, code_fingerprint))
-  const codePath = path.resolve(path.join(basePath, code.filename))
-  const codeOutPath = path.resolve(path.join(basePath, `/cmake/build/test`))
-  await fs.promises.mkdir(path.dirname(codePath), { recursive: true })
-  await fs.promises.writeFile(codePath, code.src)
-  await fs.promises.chown(codePath, config.uid, config.gid)
 
+  const basePath = path.resolve(config.CODE_FILE_TEMP_DIR, code_fingerprint)
+  const codePath = path.resolve(basePath, code.filename)
+  const codeOutPath = path.resolve(basePath, `/cmake/build/test`)
 
-  const ret2 = await BKPileline.fromJobs(
+  await new FileHelper()
+    .push('mkdir', basePath)
+    .push('write', codePath, code.src)
+    .push('chown', codePath, config.uid, config.gid)
+    .push('chgrp', codePath, config.uid, config.gid)
+    .run()
+
+  await BKPileline.fromJobs(
     require_procedure('c++14_grpc_player_compile').with({
       pipeline_ctx: {
         in_file_name: codePath,
@@ -100,13 +114,6 @@ async function prepare_proxy_player(player: PlayerFacade) :Promise<string> {
       value: codeOutPath,
     }).compile()
   ).run()
-  console.log(ret2)
-
-  return codeOutPath
-}
-
-async function run_proxy_player(execPath: string, jailConfig: object) {
-  
 }
 
 
