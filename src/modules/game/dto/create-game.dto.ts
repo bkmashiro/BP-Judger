@@ -1,5 +1,5 @@
 import { GameruleID } from "../../gamerule/entities/gamerule.entity"
-import { PlayerInstID } from "../../player/entities/player.entity"
+import { PlayerFacadeID } from "../../player/entities/player.entity"
 
 export class CreateGameDto_test {
   gameruleId: number
@@ -21,13 +21,13 @@ export type HumanType = {
 
 export type BotPreparedType = {
   type: 'bot'
-  botId: PlayerInstID
+  botId: PlayerFacadeID
   execPath: string
 }
 
 export type HumanPreparedType = {
   type: 'human'
-  human: PlayerInstID
+  human: PlayerFacadeID
   socket: any
 }
 

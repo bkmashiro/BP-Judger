@@ -46,6 +46,7 @@ export class GameManager {
     return game
   }
 
+
   static newGameID() { 
     return "ac856d20-4e9c-409f-b1b3-d2d41a1df9a0"
     // return randomUUID()
@@ -160,7 +161,6 @@ export class Game extends EventEmitter {
     this.emit('player-registered', gamer)
     this.emit('status-change')
     gamer.on('status-change', (status: string) => {
-      console.log(`@@@player ${gamer.uuid} status changed to ${status}`)
       this.emit('status-change')
       this.emit('player-status-change', gamer, status)
     })

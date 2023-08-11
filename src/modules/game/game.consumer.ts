@@ -4,7 +4,7 @@ import { BotPreparedType, BotType, CreateGameDto_test, HumanType } from './dto/c
 import { GameManager } from 'src/game/game';
 import { GameRuleProxy } from 'src/game/gamerules/gameruleProxy/GameRuleProxy';
 import { BKPileline } from 'src/pipelining/pipelining';
-import { PlayerInstance } from '../player/entities/player.entity';
+import { PlayerFacade as PlayerFacade } from '../player/entities/player.entity';
 import { Inject } from '@nestjs/common';
 import { Bot } from '../bot/entities/bot.entity';
 import { Repository } from 'typeorm';
@@ -21,7 +21,7 @@ export class GameConsumer {
     private readonly botRepository: Repository<Bot>,
     @InjectRepository(GameruleInstance)
     private readonly gameruleRepository: Repository<GameruleInstance>,
-  ) {}
+  ) { }
 
   @Process('game')
   async consume(_job: Job<unknown>) {
@@ -42,7 +42,7 @@ export class GameConsumer {
 
 
     //preparing
-    
+
     // prepare gamerule proxy
     const gameRuleId = data.gameruleId //TODO: need to use this id to get gamerule
     const gamerulePipeline = new BKPileline({
@@ -58,60 +58,15 @@ export class GameConsumer {
     // prepare player proxies
     const bot_players = players.filter(player => player.type === 'bot') as BotType[]
     const human_players = players.filter(player => player.type === 'human') as HumanType[]
-    console.log(bot_players)
+    // console.log(bot_players)
     for (const bot_player of bot_players) {
-      console.log(`bot ${bot_player.botId} is preparing`);
-      const botPlayerConfig = await this.botRepository.findOne({where: {id: bot_player.botId}}) // TODO: need to use this config to get bot
-      console.log(`botPlayerConfig: ${botPlayerConfig}`);
-      console.log(`gameRuleId ${gameRuleId}`)
-      const { memory_limit } = await this.gameruleRepository.findOne({where: {id: gameRuleId}}) // TODO: need to use this config to get bot
-      console.log(` memory_limit: ${memory_limit}`)
-      const playerInst = await PlayerInstance.newProxyPlayer(botPlayerConfig.name, botPlayerConfig.tags, botPlayerConfig.code) 
+      const botPlayerConfig = await this.botRepository.findOne({ where: { id: bot_player.botId } }) // TODO: need to use this config to get bot
+      const { memory_limit } = await this.gameruleRepository.findOne({ where: { id: gameRuleId } }) // TODO: need to use this config to get bot
+      const playerInst = await PlayerFacade.ProxyPlayer(botPlayerConfig.name, botPlayerConfig.tags, botPlayerConfig.code)
       // register players to game
       // TODO: clean this
-      gameInstance.registerGamer(PlayerProxyManager.getPlayerProxy(playerInst.id))
-      console.log(`player: ${playerInst.id}`);
-      const { execPath } = await playerInst.prepare() as BotPreparedType
-      console.log(`execPath: ${execPath}`);
-      const exec_pipeline = new BKPileline({
-        jobs: [
-          {
-            name: 'run_test_bot',
-            run: execPath,
-            
-            jail: {
-              mount: [
-                "/tmp/code",
-                execPath
-              ],
-              mount_readonly: [
-                "/bin",
-                "/sbin",
-                "/lib",
-                "/lib64/",
-                "/usr/",
-                "/sbin/",
-                "/dev",
-                "/dev/urandom",
-                "/run/netns"
-              ],
-              timeout: 10,
-              mem_max: 256,
-              user: 1919,
-              group: 1919,
-              pid_max: 32,
-              safetySetup: true,
-              env: {
-                "PATH": "/bin:/usr/bin:/sbin:/usr/sbin:/usr/local/bin:/usr/local/sbin"
-              },
-              // really_quiet: true
-            } as NsJailConfig,
-            netns: 'jail'
-          }
-        ]
-      })
-      exec_pipeline.run()
-      console.log(`bot ${bot_player.botId} is up`)
+      gameInstance.registerGamer(playerInst.proxy)
+      prepareBotPlayer(playerInst)
     }
 
     job.progress(++progress);
@@ -125,5 +80,46 @@ export class GameConsumer {
     console.log(`Job ${_job.id} done`)
     return 'done';
   }
+}
 
+async function prepareBotPlayer(bot_player_inst: PlayerFacade) {
+  const { execPath } = await bot_player_inst.prepare() as BotPreparedType
+  const exec_pipeline = new BKPileline({
+    jobs: [
+      {
+        name: 'run_test_bot',
+        run: execPath,
+
+        jail: {
+          mount: [
+            "/tmp/code",
+            execPath
+          ],
+          mount_readonly: [
+            "/bin",
+            "/sbin",
+            "/lib",
+            "/lib64/",
+            "/usr/",
+            "/sbin/",
+            "/dev",
+            "/dev/urandom",
+            "/run/netns"
+          ],
+          timeout: 10,
+          mem_max: 256,
+          user: 1919,
+          group: 1919,
+          pid_max: 32,
+          safetySetup: true,
+          env: {
+            "PATH": "/bin:/usr/bin:/sbin:/usr/sbin:/usr/local/bin:/usr/local/sbin"
+          },
+          // really_quiet: true
+        } as NsJailConfig,
+        netns: 'jail'
+      }
+    ]
+  })
+  exec_pipeline.run()
 }
