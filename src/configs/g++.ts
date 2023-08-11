@@ -6,14 +6,14 @@ export const config = {
     //   onSuccess: "next",
     //   onFailure: "stop",
     //   jail: {
-    //     mount: ["/home/shiyuzhe/lev/bp/bp-judger/src/sandbox-test/jail-mount"],
+    //     mount: ["${@src}/dummy"],
     //     mount_readonly: ["/bin", "/lib", "/lib64/", "/usr/", "/sbin/", "/dev", "/dev/urandom"],
     //     timeout: 10,
     //     mem_max: 256,
     //     user: 1919,
     //     group: 1919,
     //     pid_max: 32,
-    //     cwd: "/home/shiyuzhe/lev/bp/bp-judger/src/sandbox-test/jail-mount",
+    //     cwd: "${@src}/dummy",
     //     safetySetup: true,
     //     env: {
     //       PATH: "/bin:/usr/bin:/sbin:/usr/sbin:/usr/local/bin:/usr/local/sbin"
@@ -38,6 +38,10 @@ export const config = {
         playerType: "proxy"
       }
     },
+    // {
+    //   name: "debug-echo",
+    //   run: "echo ${player-proxy-up.playerId}",
+    // }
     // {
     //   name: "notify",
     //   use: "post",

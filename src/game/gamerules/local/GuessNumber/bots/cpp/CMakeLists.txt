@@ -5,7 +5,7 @@ project(Player C CXX)
 include(./common.cmake)
 
 # Proto file
-get_filename_component(player_proto "../../../grpc/player.proto" ABSOLUTE)
+get_filename_component(player_proto "../../../../../players/playerProxy/grpc/player.proto" ABSOLUTE)
 get_filename_component(player_proto_path "${player_proto}" PATH)
 
 # Generated sources

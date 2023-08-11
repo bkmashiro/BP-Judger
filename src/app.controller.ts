@@ -9,4 +9,9 @@ export class AppController {
   getHello(): string {
     return this.appService.getHello();
   }
+
+  @Get('/meta')
+  getJudgerMeta(): any {
+    return this.appService.getJudgerMeta()
+  }
 }

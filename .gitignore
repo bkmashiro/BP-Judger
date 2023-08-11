@@ -35,5 +35,9 @@ lerna-debug.log*
 !.vscode/extensions.json
 
 config.ts
+meta.ts
 cmake
 build
+src/configs/predefined/*.json
+*.env
+caches

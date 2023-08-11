@@ -11,14 +11,14 @@ import { PlayerManager } from "./players/PlayerFactory";
 
 
 ; (async () => {
-  GameManager.registerGameRule('GuessNumber', GuessNumberGame)
-  GameManager.registerGameRule('GameRuleProxy', new GameRuleProxyFactory())
+  GameManager.registerGameRule('GuessNumber', GuessNumberGame) // Local TS gamerule
+  GameManager.registerGameRule('GameRuleProxy', GameRuleProxyFactory.instance) // Remote gRPC gamerule
   
   PlayerManager.registerGamerType('noob', NoobPlayer)                 // register prototype class
-  PlayerManager.registerGamerType('proxy', new PlayerProxyFactory())  // register factory 
+  PlayerManager.registerGamerType('proxy', PlayerProxyFactory.instance)  // register factory 
 
-  // const guessNumberGame = GameManager.newGame('GuessNumber')
-  const guessNumberGame = GameManager.newGame('GameRuleProxy')
+  const guessNumberGame = GameManager.newGame('GuessNumber')
+  // const guessNumberGame = GameManager.newGame('GameRuleProxy')
 
   console.log(`Game ${guessNumberGame.uuid} created`)
   
@@ -26,7 +26,7 @@ import { PlayerManager } from "./players/PlayerFactory";
   BKPileline.registerModule('player', new PlayerModule())
 
   const pipeline = new BKPileline(config)
-  pipeline.addCtx(
+  pipeline.ctx(
     {
       'out_file_name': 'helloworld.out',
       'in_file_name': 'helloworld.cpp',

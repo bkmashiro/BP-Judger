@@ -5,12 +5,9 @@ import { PlayerBase } from "../../../game/players/PlayerBase";
 import { PlayerManager } from "../../../game/players/PlayerFactory";
 
 
-export class PlayerModule extends EventEmitter implements IModule {
-
-  gamer: PlayerBase
-
-  async run(with_: object, ctx: object): Promise<object> {
-    this.gamer = PlayerManager.newPlayer(with_['playerType'])
+export class PlayerModule implements IModule {
+  async run(with_: object, ctx: object) {
+    const gamer = PlayerManager.newPlayer(with_['playerType'])
 
     const gameId = with_['gameId']
 
@@ -20,10 +17,11 @@ export class PlayerModule extends EventEmitter implements IModule {
 
     const game = GameManager.getGame(gameId)
 
-    game.registerGamer(this.gamer)
+    game.registerGamer(gamer)
 
     return {
-      'status': 'ready',
+      __code__: 0,
+      playerId: gamer.uuid,
     }
   }
 }

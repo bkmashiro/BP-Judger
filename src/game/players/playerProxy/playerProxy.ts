@@ -1,7 +1,7 @@
 import * as grpc from '@grpc/grpc-js';
 import { JsonMessage, UnimplementedPlayerProxyService } from "./grpc/typescript/gamer-proxy"
 import { GameContext, MatchContext } from "../../game";
-import { playerProxyUrl } from '../../../configs/config';
+import { config } from '../../../configs/config';
 import { PlayerBase } from '../PlayerBase';
 import { PlayerMoveWarpper, PlayerID } from '../IPlayer';
 import { PlayerFactory, PlayerManager } from '../PlayerFactory';
@@ -34,7 +34,17 @@ export class PlayerProxy extends PlayerBase {
 // this will specify which proxy to use 
 export class PlayerProxyManager extends PlayerFactory {
 
-  constructor() {
+  private static _instance: PlayerProxyManager
+
+  static get instance(): PlayerProxyManager {
+    if (!this._instance) {
+      this._instance = new PlayerProxyManager()
+    }
+    return this._instance
+  }
+
+
+  private constructor() {
     super()
     PlayerProxyManager.startServer()
   }
@@ -62,11 +72,11 @@ export class PlayerProxyManager extends PlayerFactory {
   static startServer() {
     this.server.addService(UnimplementedPlayerProxyService.definition, new PlayerProxyGRPCService());
     this.server.bindAsync(
-      playerProxyUrl,
+      config.playerProxyUrl,
       grpc.ServerCredentials.createInsecure(),
       () => this.server.start()
     );
-    console.log("PlayerProxyService is running on", playerProxyUrl)
+    console.log("PlayerProxyService is running on", config.playerProxyUrl)
   }
 
   static shutdownServer() {
@@ -94,6 +104,7 @@ class PlayerProxyGRPCService extends UnimplementedPlayerProxyService {
   Move(call: grpc.ServerDuplexStream<JsonMessage, JsonMessage>): void { // TODO: check if this will called many times by one client
     call.on('data', (data: JsonMessage) => {
       const obj = JSON.parse(data.json)
+      console.log(obj)
       const playerId = PlayerProxyGRPCService.updatePeers(obj, call)
     })
 

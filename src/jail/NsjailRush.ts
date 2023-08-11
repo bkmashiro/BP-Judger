@@ -5,15 +5,15 @@ import * as path from 'path'
 import * as mkfifo from 'mkfifo'
 import { randomUUID } from "crypto"
 import { EventEmitter } from "events";
-import { path_to_nsjail } from "../configs/config"
- 
+import { config as cfg } from "../configs/config"
+
 export class NsJail extends EventEmitter {
   options: Array<{
     key: string,
     value: string
   }> = []
   jailName = randomUUID()
- 
+
   path_to_command: string
   args: string[] = []
   signs: string[] = []
@@ -60,7 +60,12 @@ export class NsJail extends EventEmitter {
     return this
   }
 
-  async spawn(config?: SpawnOptionsWithoutStdio) : Promise<string> {
+  /**
+   * @deprecated
+   * @param config 
+   * @returns 
+   */
+  async spawn(config?: SpawnOptionsWithoutStdio): Promise<string> {
     if (getuid && getuid() !== 0 && getgid && getgid() !== 0) {
       throw new Error('You must run this program as root')
     }
@@ -111,13 +116,14 @@ export class NsJail extends EventEmitter {
     }
 
     return new Promise((resolve, reject) => {
-      this.nsjailProcess = spawn(path_to_nsjail, this.toString().split(' '), {stdio: 'inherit'})
-      this.nsjailProcess?.on('data', (data) => {
-        console.log(data.toString());
-      });
+      console.log(this.toString())
+      this.nsjailProcess = spawn(cfg.path_to_nsjail, this.toString().split(' '), { stdio: 'pipe' })
+      // this.nsjailProcess?.on('data', (data) => {
+      //   console.log(data.toString());
+      // });
 
       this.nsjailProcess.stdout?.on('data', (data) => {
-        console.log(data.toString());
+        // console.log(data.toString());
         this.stdOut += data.toString();
       });
 
@@ -130,10 +136,10 @@ export class NsJail extends EventEmitter {
       });
 
       this.nsjailProcess.on('close', (code) => {
-        console.log(`child process exited with code ${code}`);
-        
+        // console.log(`child process exited with code ${code}`);
+
         if (code === 0) {
-          resolve(this.stdOut); // 返回输出字符串
+          resolve(this.stdOut);
         } else {
           reject(this.stdErr);
         }
@@ -191,6 +197,10 @@ export class NsJail extends EventEmitter {
 
   toString() {
     return `${this.toStringArgsArray().join(' ')} -- ${this.path_to_command} ${this.args.join(' ')}`
+  }
+
+  getCommand() {
+    return `${cfg.path_to_nsjail} ${this.toString()}`
   }
 
   toArray() {
@@ -322,6 +332,10 @@ export class NsJail extends EventEmitter {
       return this.add('env', k)
     }
     return this.add('env', `${k}=${v}`)
+  }
+
+  keep_caps() {
+    return this.add('keep_caps')
   }
 
   cap(cap: string) {
@@ -548,6 +562,10 @@ export class NsJail extends EventEmitter {
     return this.add('disable_proc')
   }
 
+  disable_clone_newnet() {
+    return this.add('disable_clone_newnet')
+  }
+
   CPULimit(limit: CPULimit) {
     if (!limit.cpu_ms_per_sec || limit.cpu_ms_per_sec === "UNLIMITED") {
       limit.cpu_ms_per_sec = 0
@@ -557,8 +575,17 @@ export class NsJail extends EventEmitter {
   }
 
   MemLimit(limit_MB: number) {
-    this.rlimit_as(limit_MB)
-    this.cgroup_mem_max(limit_MB * 1024 * 1024)
+    this.rlimit_as(limit_MB * 1024)
+    return this
+  }
+
+  FileLimit_NoOpen(open_limit_cnt: number) {
+    this.rlimit_nofile(open_limit_cnt)
+    return this
+  }
+  
+  FileLimit_SizeWrite(write_limit_kb: number) {
+    this.rlimit_fsize(write_limit_kb * 1024)
     return this
   }
 
@@ -574,6 +601,9 @@ export class NsJail extends EventEmitter {
     }
     if (config.mount_readonly) {
       config.mount_readonly.forEach(m => this.bindmount_ro(m))
+    }
+    if (config.mount_tmpfs) {
+      config.mount_tmpfs.forEach(m => this.tmpfsmount(m, m))
     }
     if (config.timeout) {
       this.time_limit(config.timeout)
@@ -607,29 +637,76 @@ export class NsJail extends EventEmitter {
         this.env(k, v)
       }
     }
+    if (config.keep_env) {
+      this.keep_env()
+    }
+    if (config.keep_caps) {
+      this.keep_caps()
+    }
+    if (config.slient) {
+      this.silent()
+    }
+    if (config.quiet) {
+      this.quiet()
+    }
+    if (config.really_quiet) {
+      this.really_quiet()
+    }
+    if (config.disable_clone_newnet) {
+      this.disable_clone_newnet()
+    }
+    if (config.file_no_limit) {
+      this.FileLimit_NoOpen(config.file_no_limit)
+    }
+    if (config.file_sz_limit) {
+      this.FileLimit_SizeWrite(config.file_sz_limit)
+    }
+
     return this
   }
 
-  safetySetup(){
+  safetySetup() {
     this.disable_proc()
+    //TODO more
   }
 }
 
 export type NsJailConfig = {
-  mount? : string[],
+  mount?: string[],
   mount_readonly: string[],
+  mount_tmpfs?: string[],
   timeout?: number,
   mem_max?: number,
   pid_max?: number,
   user?: number,
   group?: number,
-  mode? : 'LISTEN_TCP' | 'STANDALONE_ONCE' | 'STANDALONE_EXECVE' | 'STANDALONE_RERUN'
+  mode?: 'LISTEN_TCP' | 'STANDALONE_ONCE' | 'STANDALONE_EXECVE' | 'STANDALONE_RERUN'
   cwd?: string
   chroot?: string
   safetySetup?: boolean
   env?: {
     [key: string]: string
   }
+  keep_env?: boolean
+  keep_caps?: boolean
+  slient?: boolean
+  quiet?: boolean
+  really_quiet?: boolean
+  disable_clone_newnet?: boolean
+  file_no_limit?: number
+  file_sz_limit?: number
+}
+
+export const basic_jail_config = {
+  mount: [],
+  mount_readonly: ["/bin", "/lib", "/lib64/", "/usr/", "/sbin/", "/dev", "/dev/urandom"],
+  timeout: 10,
+  mem_max: 256,
+  user: 1919,
+  group: 1919,
+  pid_max: 32,
+  safetySetup: true,
+  env: {}
 }
 
 type CPULimit = {

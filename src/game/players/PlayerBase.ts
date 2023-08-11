@@ -3,13 +3,14 @@ import { IPlayer, PlayerMoveWarpper, PlayerStatus } from "./IPlayer"
 import { GameContext, MatchContext } from "../game"
 
 export abstract class PlayerBase extends EventEmitter implements IPlayer {
-  uuid: string
+  private _uuid: string
   playerStatus: PlayerStatus = 'offline'
 
   constructor(uuid: string) {
     super()
-    this.uuid = uuid
+    this._uuid = uuid
   }
+
   abstract move(context: MatchContext): Promise<PlayerMoveWarpper> 
 
   onGameover(gameContext: GameContext) {}
@@ -20,6 +21,18 @@ export abstract class PlayerBase extends EventEmitter implements IPlayer {
     }
 
     this.playerStatus = status
+
+    console.log(`Player ${this.uuid} status changed to ${status}`)
     this.emit('status-change', status)
   }
+  
+  public get uuid() : string {
+    return this._uuid
+  }
+  
+  /** @deprecated DONT CALL THIS IF YOU DONT KNOW WHAT ARE YOU DOING */
+  public ForceSetUUID(v : string) {
+    this._uuid = v
+  }
+  
 }

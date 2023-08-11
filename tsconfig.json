@@ -21,4 +21,9 @@
   "include": [
     "src/**/*.ts"
   ],
+  "exclude": [
+    "**/*.spec.ts",
+    "node_modules", "bower_components", "jspm_packages", "dist",
+    "src/**/cmake/**/*.ts",
+  ]
 }

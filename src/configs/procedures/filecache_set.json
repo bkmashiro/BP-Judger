@@ -1,0 +1,6 @@
+{
+  "use": "filecache",
+  "with": {
+    "action": "set"
+  }
+}
