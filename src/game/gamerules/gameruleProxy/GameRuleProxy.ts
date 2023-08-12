@@ -36,11 +36,11 @@ export class GameRuleProxy extends GameRuleBase {
 
   msgQueue: MatchContext[] = []
   async validate_game_pre_requirements(ctx: MatchContext): Promise<boolean> {
-    console.log(`[validate_game_pre_requirements] called, ctx is ${JSON.stringify(ctx)}`)
+    // console.log(`[validate_game_pre_requirements] called, ctx is ${JSON.stringify(ctx)}`)
     await this.whenReady
     const rg = this.rgs["ValidateGamePreRequirements"]
     const ret = await rg.doQuery({ ctx }) as boolean
-    console.log(`[GameRuleProxyV2.validate_game_pre_requirements] ret is ${ret}`)
+    // console.log(`[GameRuleProxyV2.validate_game_pre_requirements] ret is ${ret}`)
     return ret
   }
 

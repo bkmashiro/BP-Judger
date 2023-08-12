@@ -40,4 +40,10 @@ export abstract class PlayerBase extends EventEmitter implements IPlayer {
     this._uuid = v
   }
   
+  
+  public get ready() : boolean {
+    return this.status === 'ready'
+  }
+  
+
 }

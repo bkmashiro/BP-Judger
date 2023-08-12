@@ -200,8 +200,7 @@ export class JobExecutor {
       const netns = this.job['netns']
       cmd = `/usr/sbin/ip netns exec ${netns} ${cmd}`;
     }
-
-    console.log(cmd)
+    // console.log(cmd)
     return cmd
   }
 

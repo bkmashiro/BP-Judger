@@ -27,7 +27,7 @@ export class GameService {
 
   async create_test(createGameDto: CreateGameDto_test) {
     const job = await this.gameQueue.add('game', createGameDto);
-    console.log(job.id)
+    // console.log(job.id)
   }
 
   findAll() {

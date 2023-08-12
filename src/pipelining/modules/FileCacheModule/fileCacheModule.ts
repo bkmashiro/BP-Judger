@@ -18,7 +18,7 @@ export class FileCahceModule implements IModule {
       }
     } else if (action === 'set') {
       await cache.set(key, value)
-      console.log('set', key, value)
+      // console.log('set', key, value)
       ret = `cache set ${key} ${value}`
       code = 0
     } else if (action === 'has') {
