@@ -23,7 +23,6 @@ export class BKPileline {
     }
     // this.context = this.config['constants'] ?? {}
     this.context = Object.assign(this.context, recursive_render_obj(this.config['constants'], this.context))
-    console.log(`@src is ${this.context['@src']}`)
   }
 
   async run() : Promise<object[]> {
