@@ -65,6 +65,7 @@ export class GameConsumer {
       const playerInst = await PlayerFacade.ProxyPlayer(botPlayerConfig.name, botPlayerConfig.tags, botPlayerConfig.code)
       // register players to game
       // TODO: clean this
+      console.log(`Registering player ${playerInst.id} to game ${gameRuleInstanceUUID}`)
       gameInstance.registerGamer(playerInst.proxy)
       prepareBotPlayer(playerInst)
     }
@@ -84,6 +85,7 @@ export class GameConsumer {
 
 async function prepareBotPlayer(bot_player_inst: PlayerFacade) {
   const { execPath } = await bot_player_inst.prepare() as BotPreparedType
+  console.log(`Player ${bot_player_inst.id} prepared at ${execPath}`)
   const exec_pipeline = new BKPileline({
     jobs: [
       {

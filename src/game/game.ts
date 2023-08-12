@@ -5,6 +5,7 @@ import { PlayerBase } from "./players/PlayerBase";
 import { GameRuleFactory } from "./gamerules/GameRuleFactory";
 import { GameRuleBase, IGameRuleConstructor, GAME_SHALL_OVER, GAME_SHALL_BEGIN } from "./gamerules/GameRuleBase";
 import { config } from "../configs/config";
+import { All } from "src/utils";
 
 export type GameContext = {
   "players": Record<PlayerID, IPlayer>,
@@ -202,6 +203,7 @@ export class Game extends EventEmitter {
   public async Ready(): Promise<boolean> {
     return await this.gameRule.validate_game_pre_requirements(this.game_ctx) === GAME_SHALL_BEGIN 
     && await this.gameRule.isReady()
+    && All(Object.values(this.players), (player: PlayerBase) => player.status === 'ready')
   }
 
 }

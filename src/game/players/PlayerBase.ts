@@ -4,7 +4,7 @@ import { GameContext, MatchContext } from "../game"
 
 export abstract class PlayerBase extends EventEmitter implements IPlayer {
   private _uuid: string
-  playerStatus: PlayerStatus = 'offline'
+  status: PlayerStatus = 'unset'
 
   constructor(uuid: string) {
     super()
@@ -15,12 +15,17 @@ export abstract class PlayerBase extends EventEmitter implements IPlayer {
 
   onGameover(gameContext: GameContext) {}
 
+  //TODO Use finite state machine to control the status of the player
   setStatus(status: PlayerStatus) {
-    if(this.playerStatus === status) {
+    if(this.status === status) {
+      return
+    }
+    if (this.status === 'playing' && status==='ready') {
       return
     }
 
-    this.playerStatus = status
+
+    this.status = status
 
     console.log(`Player ${this.uuid} status changed to ${status}`)
     this.emit('status-change', status)

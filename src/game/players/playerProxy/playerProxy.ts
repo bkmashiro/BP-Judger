@@ -3,11 +3,11 @@ import { JsonMessage, UnimplementedPlayerProxyService } from "./grpc/typescript/
 import { GameContext, MatchContext } from "../../game";
 import { config } from '../../../configs/config';
 import { PlayerBase } from '../PlayerBase';
-import { PlayerMoveWarpper, PlayerID } from '../IPlayer';
+import { PlayerMoveWarpper, PlayerID, PlayerStatus } from '../IPlayer';
 import { PlayerFactory, PlayerManager } from '../PlayerFactory';
 
 export class PlayerProxy extends PlayerBase {
-
+  status: PlayerStatus = 'offline'
   constructor(uuid: string) {
     super(uuid)
   }
@@ -104,7 +104,6 @@ class PlayerProxyGRPCService extends UnimplementedPlayerProxyService {
   Move(call: grpc.ServerDuplexStream<JsonMessage, JsonMessage>): void { // TODO: check if this will called many times by one client
     call.on('data', (data: JsonMessage) => {
       const obj = JSON.parse(data.json)
-      console.log(obj)
       const playerId = PlayerProxyGRPCService.updatePeers(obj, call)
     })
 
@@ -127,8 +126,10 @@ class PlayerProxyGRPCService extends UnimplementedPlayerProxyService {
         call.on('data', (data: JsonMessage) => {
           const obj = JSON.parse(data.json)
           const playerId = PlayerProxyGRPCService.updatePeers(obj, call)
+          PlayerProxyManager.getPlayerProxy(playerId).setStatus('ready')
           this.onData.get(playerId)(data)
         })
+        console.debug(`peer ${playerId} added`)
       }
       if (msg.hasOwnProperty('action')){
         PlayerProxyGRPCService.handleAction(playerId, msg['action'])
@@ -178,7 +179,6 @@ class PlayerProxyGRPCService extends UnimplementedPlayerProxyService {
           }
         })
       })
-
     } else {
       throw new Error(`Peer ${playerId} not found`)
     }

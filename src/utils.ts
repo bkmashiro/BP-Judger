@@ -1,6 +1,6 @@
 import { createHash } from "crypto";
 import { Code } from "./modules/player/entities/player.entity";
-import fs from 'fs/promises';
+import * as fs from 'fs/promises';
 
 
 export function delay(ms: number) {
