@@ -163,14 +163,20 @@ export class JobExecutor {
   async run() {
     if (this.job.hasOwnProperty('run')) {
       let command = render(this.job['run'], this.context)
-
+      if (!command) throw new Error(`Command is empty`)
       //spilt command into command and args
       const args = command.split(' ')
       command = args.shift()
 
       const assembled = this.assemble_command(command, args)
-
-      await runCommand(assembled)
+      if (this.job.hasOwnProperty('verbose') && this.job['verbose']) {
+        console.log(`@running:`,assembled)
+      }
+      const ret = await runCommand(assembled)
+      if (this.job.hasOwnProperty('verbose') && this.job['verbose']) {
+        console.log(`@returing:`,ret)
+      }
+      return ret
 
     } else if (this.job.hasOwnProperty('use')) {
       const module_name = this.job['use']

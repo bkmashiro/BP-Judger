@@ -8,6 +8,7 @@ export function delay(ms: number) {
 }
 
 export function render(template: string, context: object) {
+  if (!template) return null
   const required_vars = template.match(/\${(.*?)}/g)?.map((variable) => variable.slice(2, -1))
   check_required_variables(required_vars, context)
   return template.replace(/\${(.*?)}/g, (match, variable) => context[variable]);

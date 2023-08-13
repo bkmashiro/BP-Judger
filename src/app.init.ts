@@ -16,6 +16,7 @@ export default function Init() {
     '/sys/fs/cgroup/memory/NSJAIL',
     '/sys/fs/cgroup/cpu,cpuacct/NSJAIL',
     '/tmp/code',
+    '/tmp/ccache_cache'
   ]
 
   try {

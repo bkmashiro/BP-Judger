@@ -331,7 +331,7 @@ export class NsJail extends EventEmitter {
     if (v === undefined) {
       return this.add('env', k)
     }
-    return this.add('env', `${k}=${v}`)
+    return this.add(`env ${k}=${v}`)
   }
 
   keep_caps() {

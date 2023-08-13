@@ -81,18 +81,20 @@ async function prepare_proxy_player({ code }: PlayerFacade) :Promise<string> {
 
 
 
-async function prepare_code(code :Code) {
+async function prepare_code(code :Code) :Promise<string> {
   if (!code) throw new Error('Code not found')
   
   const code_fingerprint = createCodeFingerprint(code)
   if (await FileCache.instance.has(code_fingerprint)) { // if cached, skip compile
     const codeOutPath = await FileCache.instance.get(code_fingerprint)
+    console.log(`Code ${code_fingerprint} cached at ${codeOutPath}`)
     return codeOutPath
   }
 
   const basePath = path.resolve(path.join(config.CODE_FILE_TEMP_DIR, code_fingerprint))
   const codePath = path.resolve(path.join(basePath, code.filename))
   const codeOutPath = path.resolve(path.join(basePath, `/cmake/build/test`))
+  console.log(codeOutPath)
   //TODO add error handling
   await new FileHelper()
     .push('mkdir', basePath)
@@ -114,6 +116,8 @@ async function prepare_code(code :Code) {
       value: codeOutPath,
     }).compile()
   ).run()
+
+  return codeOutPath
 }
 
 
