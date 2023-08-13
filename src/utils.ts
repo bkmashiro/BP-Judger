@@ -91,6 +91,7 @@ export function ifNotNullDo(func: any, ...args: any[]) {
 }
 
 export function ifUndefinedThenAssign(obj: any, key: string, value: any) {
+  if (!obj) return
   if (!obj.hasOwnProperty(key)) {
     obj[key] = value
   }

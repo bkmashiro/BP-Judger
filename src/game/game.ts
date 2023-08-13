@@ -158,7 +158,7 @@ export class Game extends EventEmitter {
 
   registerGamer(gamer: PlayerBase) {
     this.players[gamer.uuid] = gamer
-    console.log(`player ${gamer.uuid} registered and waiting`)
+    // console.log(`player ${gamer.uuid} registered and waiting`)
     this.emit('player-registered', gamer)
     this.emit('status-change')
     gamer.on('status-change', (status: string) => {

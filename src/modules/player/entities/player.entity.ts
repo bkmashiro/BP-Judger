@@ -11,7 +11,7 @@ import { PreparedPlayerType } from "src/modules/game/dto/create-game.dto";
 import { FileHelper, createCodeFingerprint } from "src/utils";
 
 export type PlayerFacadeID = string
-
+const logger = new Logger('PlayerFacade')
 export class PlayerFacade implements IPlayerFacade {
   type: PlayerFacadeType
   name: string
@@ -51,7 +51,7 @@ export class PlayerFacade implements IPlayerFacade {
   async prepare(): Promise<PreparedPlayerType> {
     if (this.type === PlayerFacadeType.PROXY) {
       const execPath = await prepare_proxy_player(this)
-      Logger.log(`Player ${this.id} prepared at ${execPath}`)
+      logger.log(`Player ${this.id} prepared`)
       return {
         type: 'bot',
         botId: this.id,
@@ -87,7 +87,7 @@ async function prepare_code(code :Code) :Promise<string> {
   const code_fingerprint = createCodeFingerprint(code)
   if (await FileCache.instance.has(code_fingerprint)) { // if cached, skip compile
     const codeOutPath = await FileCache.instance.get(code_fingerprint)
-    console.log(`Code ${code_fingerprint} hit cache ${codeOutPath}`)
+    // console.log(`Code ${code_fingerprint} hit cache ${codeOutPath}`)
     return codeOutPath
   }
 

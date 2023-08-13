@@ -7,6 +7,7 @@ import { config, base_config } from "../configs/config"
 import { Logger } from "@nestjs/common"
 import * as chalk from 'chalk'
 import { Job } from "./pipelining.decl"
+import { NsJail } from "src/jail/NsjailRush"
 
 const logger = new Logger('Pilelining');
 export class BKPileline {
@@ -27,7 +28,7 @@ export class BKPileline {
     this.context = Object.assign(this.context, recursive_render_obj(this.config['constants'], this.context))
   }
 
-  async run(ignore_timeout = false) : Promise<object[]> {
+  async run(ignore_timeout = false): Promise<object[]> {
     // if has timeout, run with timeout
     if (!ignore_timeout && this.timeout_ms != 0) {
       return timeout(this.run(true), this.timeout_ms)
@@ -44,7 +45,7 @@ export class BKPileline {
         logger.log(`Running job ${job.name}`)
         const [ret, duration] = await timed(() => executor.run())
         rets.push(ret)
-        logger.log(`${chalk.white('Job')} ${chalk.blueBright(job.name) } finished \t +${chalk.yellow(duration.toString(), 'ms')}`)
+        logger.log(`${chalk.white('Job')} ${chalk.blueBright(job.name)} finished \t +${chalk.yellow(duration.toString(), 'ms')}`)
         this.updateCtx(ret, job)
         this.conditional(job, this.onSuccess)
       } catch (err) {
@@ -64,7 +65,7 @@ export class BKPileline {
     return { jobs }
   }
 
-  private conditional(job, strategy){
+  private conditional(job, strategy) {
     this.job_completion_strategy[strategy]()
   }
 
@@ -114,22 +115,22 @@ export class BKPileline {
     this.timeout_ms = timeout
     return this
   }
-} 
+}
 
 function formatJob(job: object) {
   ifUndefinedThenAssign(job, 'name', '<Anonymous>')
 }
 
-export function require_procedure(procedure_name: string) : ProcedurePiece {
-  const procedure_path = path.resolve(config.configs_path,`./procedures/${procedure_name}.json`)
-  if (! fs.promises.access(procedure_path)) {
+export function require_procedure(procedure_name: string): ProcedurePiece {
+  const procedure_path = path.resolve(config.configs_path, `./procedures/${procedure_name}.json`)
+  if (!fs.promises.access(procedure_path)) {
     throw new Error(`Procedure ${procedure_name} not found`)
   }
   return new ProcedurePiece(JSON.parse(fs.readFileSync(procedure_path, 'utf8')))
 }
 
-export function require_config(config_name: string) : object {
-  const config_path = path.resolve(config.configs_path,`./predefined/${config_name}.json`)
+export function require_config(config_name: string): object {
+  const config_path = path.resolve(config.configs_path, `./predefined/${config_name}.json`)
   if (!fs.promises.access(config_path)) {
     throw new Error(`Config ${config_name} not found`)
   }
@@ -141,12 +142,12 @@ class ProcedurePiece {
   constructor(raw: object) {
     this.raw = raw
   }
-  named(name:string) {
+  named(name: string) {
     this.raw['name'] = name
     return this
   }
 
-  with(ctx:object) {
+  with(ctx: object) {
     if (!this.raw.hasOwnProperty('with')) {
       this.raw['with'] = {}
     }
@@ -164,12 +165,48 @@ class ProcedurePiece {
     return this
   }
 
-  compile(ctx:object={}) {
+  compile(ctx: object = {}) {
     const jobs = recursive_render_obj(this.raw, ctx)
     return jobs
   }
 }
 
+// CoR pattern
+interface ICommandHandler {
+  handle(inner: string, context: { [key: string]: string }): string
+}
+
+
+class PlainSystemCommandHandler implements ICommandHandler {
+  handle(_: string, context: { [key: string]: any }): string {
+    return `${context.command} ${context.args.join(' ')}`
+  }
+}
+
+class NSJailCommandHandler implements ICommandHandler {
+  handle(inner: string, context: { [key: string]: any }): string {
+    if(!context.hasOwnProperty('jail')) {
+      return inner
+    }
+    if (context.netns) {
+      ifUndefinedThenAssign(context.jail, 'disable_clone_newnet', { disable_clone_newnet: true })
+    }
+    const jail = NsJail.asDangling().loadConfig(context.jail)
+
+    jail.setCommand(inner)
+
+    return jail.getCommand()
+  }
+}
+
+class NetnsCommandHandler implements ICommandHandler {
+  handle(inner: string, context: { [key: string]: any }): string {
+    if(!context.hasOwnProperty('netns')) {
+      return inner
+    }
+    return `/usr/sbin/ip netns exec ${context.netns} ${inner}`
+  }
+}
 export class JobExecutor {
 
   context: object
@@ -180,7 +217,7 @@ export class JobExecutor {
     this.context = context
   }
 
-  async run() : Promise<ModuleRunResult | any> {
+  async run(): Promise<ModuleRunResult | any> {
     if (this.job.hasOwnProperty('run')) {
       return await this.handleRun()
     } else if (this.job.hasOwnProperty('use')) {
@@ -209,27 +246,22 @@ export class JobExecutor {
     return ret
   }
 
-  assemble_command(command: string, args: string[]) { //TODO: refactor this, use interceptors
-    let cmd: string = command
-    if (this.job.hasOwnProperty('netns')) {
-      ifUndefinedThenAssign(this.job.jail, 'disable_clone_newnet', {disable_clone_newnet: true})
-    }
+  static filters : ICommandHandler[] = [
+    new PlainSystemCommandHandler(),
+    new NSJailCommandHandler(),
+    new NetnsCommandHandler(),
+  ]
+  
+  assemble_command(command: string, args: string[]) : string { //TODO: refactor this, use interceptors
+    let ctx : {[key: string]: any} = Object.assign({
+      command,
+      args
+    }, this.job, this.context)
 
-    if (this.job.hasOwnProperty('jail')) {
-      const jailConfig = recursive_render_obj(this.job['jail'], this.context)
-      const executor = new JailedCommandAssembler(jailConfig)
-      cmd = executor.assemble(cmd, args)
-    } else {
-      const executor = new SystemCommandAssembler()
-      cmd = executor.assemble(cmd, args)
+    for (const filter of JobExecutor.filters) {
+      command = filter.handle(command, ctx)
     }
-
-    if (this.job.hasOwnProperty('netns')) { //TODO clean this up
-      const netns = this.job['netns']
-      cmd = `/usr/sbin/ip netns exec ${netns} ${cmd}`;
-    }
-    // console.log(cmd)
-    return cmd
+    return command
   }
 
   static modules: {
@@ -256,3 +288,5 @@ export class JobExecutor {
     JobExecutor.modules[module_name] = module
   }
 }
+
+
