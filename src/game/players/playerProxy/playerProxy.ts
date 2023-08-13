@@ -104,12 +104,13 @@ class PlayerProxyGRPCService extends UnimplementedPlayerProxyService {
   Move(call: grpc.ServerDuplexStream<JsonMessage, JsonMessage>): void { // TODO: check if this will called many times by one client
     call.on('data', (data: JsonMessage) => {
       const obj = JSON.parse(data.json)
+      console.debug(`[PlayerProxyGRPCService] data received from ${obj['by']}`)
       const playerId = PlayerProxyGRPCService.updatePeers(obj, call)
     })
 
-    // call.on('end', () => {
-    //   console.log(`peer ended`)
-    // })
+    call.on('end', () => {
+      console.log(`peer ended`)
+    })
 
     call.on('error', (err: Error) => {
       console.error(err)
@@ -126,10 +127,11 @@ class PlayerProxyGRPCService extends UnimplementedPlayerProxyService {
         call.on('data', (data: JsonMessage) => {
           const obj = JSON.parse(data.json)
           const playerId = PlayerProxyGRPCService.updatePeers(obj, call)
+          console.debug(`[PlayerProxyGRPCService] data received from ${playerId}`)
           PlayerProxyManager.getPlayerProxy(playerId).setStatus('ready')
           this.onData.get(playerId)(data)
         })
-        // console.debug(`peer ${playerId} added`)
+        console.debug(`peer ${playerId} added`)
       }
       if (msg.hasOwnProperty('action')){
         PlayerProxyGRPCService.handleAction(playerId, msg['action'])

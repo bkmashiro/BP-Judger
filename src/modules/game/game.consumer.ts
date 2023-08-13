@@ -47,7 +47,7 @@ export class GameConsumer {
           run: '/usr/local/bin/ts-node ${@src}/game/gamerules/gameruleProxy/gamerule.test.ts',
         }
       ]
-    }).setTimeout(1000);
+    }).setTimeout(20000);
     gamerulePipeline.run() // Not to wait for the result
 
     // prepare player proxies
@@ -106,7 +106,8 @@ async function prepareBotPlayer(bot_player_inst: PlayerFacade) {
           },
           // really_quiet: true
         } as NsJailConfig,
-        netns: 'jail'
+        netns: 'jail',
+        verbose: true,
       }
     ]
   })

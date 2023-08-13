@@ -5,7 +5,7 @@ import * as fs from 'fs'
 import * as path from 'path'
 import { config, base_config } from "../configs/config"
 import { Logger } from "@nestjs/common"
-import chalk from 'chalk'
+import * as chalk from 'chalk'
 import { Job } from "./pipelining.decl"
 
 const logger = new Logger('Pilelining');
@@ -212,7 +212,7 @@ export class JobExecutor {
   assemble_command(command: string, args: string[]) { //TODO: refactor this, use interceptors
     let cmd: string = command
     if (this.job.hasOwnProperty('netns')) {
-      ifUndefinedThenAssign(this.job, 'jail', {disable_clone_newnet: true})
+      ifUndefinedThenAssign(this.job.jail, 'disable_clone_newnet', {disable_clone_newnet: true})
     }
 
     if (this.job.hasOwnProperty('jail')) {

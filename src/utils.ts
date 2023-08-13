@@ -46,11 +46,17 @@ export function recursive_render_obj(obj: object, ctx: object) {
     }
   }
 }
-
+/**
+ * Note that this will capture the stack trace of the caller
+ * @param action 
+ * @param ms 
+ * @returns 
+ */
 export function timeout<T>(action: Promise<T>, ms: number): Promise<T> {
+  const stackTrace = new Error().stack;  // This is used for better debugging
   return new Promise((resolve, reject) => {
     setTimeout(() => {
-      reject(new Error(`Timeout after ${ms}ms`))
+      reject(new Error(`Timeout after ${ms}ms at \n ${stackTrace}`))
     }, ms)
     action.then((result) => {
       resolve(result)
