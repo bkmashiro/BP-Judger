@@ -16,13 +16,13 @@ export default function Init() {
     '/sys/fs/cgroup/memory/NSJAIL',
     '/sys/fs/cgroup/cpu,cpuacct/NSJAIL',
     '/tmp/code',
+    '/tmp/ccache_cache'
   ]
 
   try {
     dirs.forEach(dir => {
       makeDirIfNotExist(dir)
     })
-    console.log('dirs Init success')
   } catch (e) {
     console.error(e)
     throw Error('Init failed: make dir failed')

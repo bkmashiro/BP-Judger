@@ -1,10 +1,17 @@
 cmake_minimum_required(VERSION 3.8)
 
-set(CMAKE_PREFIX_PATH "/home/shiyuzhe/.local" ${CMAKE_PREFIX_PATH})
+# set(CMAKE_PREFIX_PATH "/home/shiyuzhe/.local" ${CMAKE_PREFIX_PATH})
 
 project(Player C CXX)
 
 include(./common.cmake)
+
+find_program(CCACHE_FOUND ccache)
+if(CCACHE_FOUND)
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ccache)
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK ccache) # Less useful to do it for linking, see edit2
+    message(STATUS "Using CCache")
+endif(CCACHE_FOUND)
 
 if(NOT DEFINED PLAYER_PROTO_FILE_PATH)
     message(FATAL_ERROR "missing PLAYER_PROTO_FILE_PATH")
@@ -75,6 +82,3 @@ foreach(_target
     ${_GRPC_GRPCPP}
     ${_PROTOBUF_LIBPROTOBUF})
 endforeach()
-
-# 设置编译完成的可执行文件名称为 "my_executable"
-# set_target_properties(${INPUT_BOT_FILE_NAME} PROPERTIES OUTPUT_NAME "my_executable")

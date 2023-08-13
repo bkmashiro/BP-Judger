@@ -1,6 +1,7 @@
 import { config } from "src/configs/config"
 import { LRUCache } from "./LRU.cache"
-import * as fs from 'fs'
+import * as fs from 'fs/promises'
+import {constants} from 'fs'
 import { IModule } from "../IModule"
 
 export class FileCahceModule implements IModule {
@@ -18,7 +19,7 @@ export class FileCahceModule implements IModule {
       }
     } else if (action === 'set') {
       await cache.set(key, value)
-      console.log('set', key, value)
+      // console.log('set', key, value)
       ret = `cache set ${key} ${value}`
       code = 0
     } else if (action === 'has') {
@@ -59,9 +60,9 @@ class LocalFileCacheLayer implements ICacheLayer {
 
   async init(): Promise<void> {
     //make dir
-    await fs.promises.mkdir(this.cache_dir, { recursive: true })
+    await fs.mkdir(this.cache_dir, { recursive: true })
     // load cache
-    const files = await fs.promises.readdir(this.cache_dir)
+    const files = await fs.readdir(this.cache_dir)
     for (const file of files) {
       const cache_path = `${this.cache_dir}/${file}`
       const key = file
@@ -75,11 +76,17 @@ class LocalFileCacheLayer implements ICacheLayer {
     // move to cache dir
     const cache_path = `${this.cache_dir}/${key}`
     this.lru.put(key, cache_path)
-    return fs.promises.copyFile(value, cache_path)
+    return fs.copyFile(value, cache_path)
     // return fs.promises.rename(value, cache_path)
   }
-  has(key: string): Promise<boolean> {
-    return Promise.resolve(this.lru.has(key))
+  async has(key: string): Promise<boolean> {
+    //test if file exists
+    try {
+      await fs.access(`${this.cache_dir}/${key}`, constants.F_OK)
+      return Promise.resolve(true)
+    } catch (err) {
+      return Promise.resolve(false)
+    }
   }
   remove(key: string): Promise<boolean> {
     return Promise.resolve(this.lru.remove(key))

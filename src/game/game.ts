@@ -5,6 +5,8 @@ import { PlayerBase } from "./players/PlayerBase";
 import { GameRuleFactory } from "./gamerules/GameRuleFactory";
 import { GameRuleBase, IGameRuleConstructor, GAME_SHALL_OVER, GAME_SHALL_BEGIN } from "./gamerules/GameRuleBase";
 import { config } from "../configs/config";
+import { All } from "src/utils";
+import { Logger } from "@nestjs/common";
 
 export type GameContext = {
   "players": Record<PlayerID, IPlayer>,
@@ -40,13 +42,14 @@ export class GameManager {
       gamerule = gameRule.newGameRuleProxy(gameId)
     } else {
       gamerule = new gameRule()
-    } 
+    }
     const game = new Game(gameId, gamerule)
     GameManager.activeGames[gameId] = game
     return game
   }
 
-  static newGameID() { 
+
+  static newGameID() {
     return "ac856d20-4e9c-409f-b1b3-d2d41a1df9a0"
     // return randomUUID()
   }
@@ -62,6 +65,7 @@ export class GameManager {
 
 export type GAMESTATE = 'organizing' | 'ready' | 'running' | 'gameover' | 'error'
 
+const logger = new Logger('Game')
 export class Game extends EventEmitter {
   players: Record<string, IPlayer> = {}
   uuid: string
@@ -77,7 +81,7 @@ export class Game extends EventEmitter {
     super()
     this.uuid = id
     this.gameRule = gameRule
-    
+
     this.game_ctx = {
       players: this.players,
       gameId: this.uuid,
@@ -98,7 +102,7 @@ export class Game extends EventEmitter {
           this.emit('game-ready', this)
           if (config.GAME_AUTO_BEGIN_WHEN_READY) {
             this.setState('running')
-            console.log(`game ${this.uuid} begin`)
+            logger.log(`game ${this.uuid} begin`)
             this.begin()
           }
         }
@@ -135,14 +139,13 @@ export class Game extends EventEmitter {
 
         if (await this.gameRule.validate_move_post_requirements(this.match_ctx, moveWarpper) === GAME_SHALL_OVER) {
           gameNotOver = false
-
           break
         }
       }
 
       // this.emit('turn', this, moves)
     }
-    
+
     // close all player
     for (const player of Object.values(this.players)) {
       (player as PlayerBase).onGameover(this.game_ctx)
@@ -155,12 +158,10 @@ export class Game extends EventEmitter {
 
   registerGamer(gamer: PlayerBase) {
     this.players[gamer.uuid] = gamer
-    console.log(`players::`,this.players)
-    console.log(`player ${gamer.uuid} registered and waiting`)
+    // console.log(`player ${gamer.uuid} registered and waiting`)
     this.emit('player-registered', gamer)
     this.emit('status-change')
     gamer.on('status-change', (status: string) => {
-      console.log(`@@@player ${gamer.uuid} status changed to ${status}`)
       this.emit('status-change')
       this.emit('player-status-change', gamer, status)
     })
@@ -200,10 +201,10 @@ export class Game extends EventEmitter {
   }
 
   public async Ready(): Promise<boolean> {
-    return await this.gameRule.validate_game_pre_requirements(this.game_ctx) === GAME_SHALL_BEGIN 
-    && await this.gameRule.isReady()
+    return await this.gameRule.isReady()
+      && All(Object.values(this.players), player => player.ready)
+      && await this.gameRule.validate_game_pre_requirements(this.game_ctx) === GAME_SHALL_BEGIN
   }
-
 }
 
 export interface GamerConstructor {

@@ -4,7 +4,7 @@ import { PlayerBase } from "./PlayerBase"
 export interface IPlayer {
   uuid: string
   move(context: MatchContext): Promise<PlayerMoveWarpper>
-  playerStatus: PlayerStatus 
+  status: PlayerStatus 
 }
 
 export type IPlayerConstructor = (new (uuid: string) => PlayerBase);
@@ -19,4 +19,4 @@ export type PlayerMove = any
 export type GameID = string
 export type PlayerID = string
 export type GameName = string
-export type PlayerStatus = 'online' | 'offline' | 'playing' | 'waiting' | 'ready'
+export type PlayerStatus = 'online' | 'offline' | 'playing' | 'waiting' | 'ready' | 'error' | 'unknown' | 'unset'

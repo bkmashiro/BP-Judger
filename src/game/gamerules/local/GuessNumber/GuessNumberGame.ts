@@ -32,8 +32,8 @@ export class GuessNumberGame extends GameRuleBase {
   }
 
   async validate_game_pre_requirements(ctx: MatchContext) {
-    console.log(ctx.players)
-    console.log(`players size is ${ctx['players'].size}`)
+    // console.log(ctx.players)
+    // console.log(`players size is ${ctx['players'].size}`)
     if(Object.keys(ctx['players']).length && All(Object.values(ctx['players']), (gamer) => gamer.playerStatus === 'ready')) {
       return GAME_SHALL_BEGIN
     }

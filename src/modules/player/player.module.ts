@@ -2,12 +2,12 @@ import { Module } from '@nestjs/common';
 import { PlayerService } from './player.service';
 import { PlayerController } from './player.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { PlayerInstance } from './entities/player.entity';
+import { PlayerFacade } from './entities/player.entity';
 
 
 @Module({
   imports:[
-    TypeOrmModule.forFeature([PlayerInstance])
+    TypeOrmModule.forFeature([PlayerFacade])
   ],
   controllers: [PlayerController],
   providers: [PlayerService]

@@ -1,8 +1,14 @@
+import { createHash } from "crypto";
+import { Code } from "./modules/player/entities/player.entity";
+import * as fs from 'fs/promises';
+
+
 export function delay(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 export function render(template: string, context: object) {
+  if (!template) return null
   const required_vars = template.match(/\${(.*?)}/g)?.map((variable) => variable.slice(2, -1))
   check_required_variables(required_vars, context)
   return template.replace(/\${(.*?)}/g, (match, variable) => context[variable]);
@@ -40,11 +46,17 @@ export function recursive_render_obj(obj: object, ctx: object) {
     }
   }
 }
-
-export function timeout(action: Promise<any>, ms: number): Promise<any> {
+/**
+ * Note that this will capture the stack trace of the caller
+ * @param action 
+ * @param ms 
+ * @returns 
+ */
+export function timeout<T>(action: Promise<T>, ms: number): Promise<T> {
+  const stackTrace = new Error().stack;  // This is used for better debugging
   return new Promise((resolve, reject) => {
     setTimeout(() => {
-      reject(new Error(`Timeout after ${ms}ms`))
+      reject(new Error(`Timeout after ${ms}ms at \n ${stackTrace}`))
     }, ms)
     action.then((result) => {
       resolve(result)
@@ -53,7 +65,6 @@ export function timeout(action: Promise<any>, ms: number): Promise<any> {
     })
   })
 }
-
 
 export function All(set: any, predicate: ((item: any) => boolean)) {
   for (const item of set) {
@@ -77,4 +88,135 @@ export function ifNotNullDo(func: any, ...args: any[]) {
   if (func) {
     func(...args)
   }
+}
+
+export function ifUndefinedThenAssign(obj: any, key: string, value: any) {
+  if (!obj) return
+  if (!obj.hasOwnProperty(key)) {
+    obj[key] = value
+  }
+}
+
+export function createCodeFingerprint(code: Code) {
+  return createHash('sha256')
+    .update(code.src)
+    .update(code.lang)
+    .update(code.version)
+    .digest('hex')
+}
+
+export async function timed<T>(func: () => T): Promise<[T, number]> {
+  const start = Date.now()
+  const result = await func()
+  const end = Date.now()
+  return Promise.resolve([result, end - start])
+}
+
+export function propEqualsThenDo<T>(obj: any, prop: string, value: any, func: (obj: any) => T) {
+  if (obj.hasOwnProperty(prop) && obj[prop] === value) {
+    return func(obj)
+  }
+  // Do nothing
+  return undefined
+}
+
+export function ifTrueThenDo<T>(condition: boolean | undefined, func: () => T) {
+  if (condition) {
+    return func()
+  }
+  return undefined
+}
+
+
+// WARNING: TYPE GYMNASTICS AHEAD
+// YOU SHALL NOT CHANGE ANYTHING BELOW
+type FunctionArgs<T> = T extends (...args: infer Args) => any ? Args : never;
+
+type FileHelperTaskType = keyof typeof FileHelper.map;
+
+type FileHelperTask<T extends FileHelperTaskType> = {
+  name: T;
+  args: FunctionArgs<typeof FileHelper.map[T]>;
+};
+
+export class FileHelper {
+  private tasks: FileHelperTask<FileHelperTaskType>[] = [];
+
+  push<T extends FileHelperTaskType>(name: T, ...args: FunctionArgs<typeof FileHelper.map[T]>) {
+    this.tasks.push({ name, args });
+    return this;
+  }
+  private finished = []
+  async run() {
+    for (const task of this.tasks) {
+      try {
+        await FileHelper.map[task.name].apply(null, task.args);
+        this.finished.push(task)
+      } catch(err) {
+        throw err
+      }
+    }
+  }
+
+  async rollback() {
+    for (const task of this.finished.reverse()) {
+      try {
+        await FileHelper.rollback[task.name]?.apply(null, task.args);
+      } catch(err) {
+        throw err
+      }
+    }
+  }
+
+  static map = {
+    mkdir: async (target: string) => {
+      await fs.mkdir(target, { recursive: true });
+    },
+    write: fs.writeFile,
+    chown: fs.chown,
+    chgrp: fs.chown,
+    chmod: fs.chmod,
+    copy: fs.copyFile,
+    move: fs.rename,
+    delete: fs.unlink,
+  };
+  
+  static rollback = {
+    mkdir: deleteNth(0),
+    write: deleteNth(0),
+    copy:  deleteNth(1),
+    move: swapArguments(fs.rename, 1, 0),
+  }
+}
+
+function deleteNth(n: number) {
+  return args => fs.unlink(args[n])
+}
+
+type StringFromNumber<N extends number> = `${N}`
+
+type ArgumentMap<Args extends any[], IndexFrom extends number, IndexTo extends number> = {
+  [Index in keyof Args]: Index extends StringFromNumber<IndexFrom>? Args[IndexTo] : Index extends  StringFromNumber<IndexTo> ? Args[IndexFrom]: Args[Index];
+};
+
+function swap<T>(arr: T[], i: number, j: number): void {
+  const temp = arr[i];
+  arr[i] = arr[j];
+  arr[j] = temp;
+}
+
+/** Note that you will not see the arg name change, but it's actually swapped. 
+ * 
+ * So make sure what are you doing!
+*/
+function swapArguments<T extends any[], IndexFrom extends number, IndexTo extends number>(
+  fn: (...args: T) => any,
+  indexFrom: IndexFrom,
+  indexTo: IndexTo
+): (...args: ArgumentMap<T, IndexFrom, IndexTo>) => any {
+  return (...args) => {
+    swap(args, indexFrom, indexTo)
+    const swappedArgs = args as ArgumentMap<T, IndexFrom, IndexTo>;
+    return fn.apply(null, swappedArgs);
+  };
 }
