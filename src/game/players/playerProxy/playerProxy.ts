@@ -107,9 +107,9 @@ class PlayerProxyGRPCService extends UnimplementedPlayerProxyService {
       const playerId = PlayerProxyGRPCService.updatePeers(obj, call)
     })
 
-    call.on('end', () => {
-      console.log(`peer ended`)
-    })
+    // call.on('end', () => {
+    //   console.log(`peer ended`)
+    // })
 
     call.on('error', (err: Error) => {
       console.error(err)
@@ -129,7 +129,7 @@ class PlayerProxyGRPCService extends UnimplementedPlayerProxyService {
           PlayerProxyManager.getPlayerProxy(playerId).setStatus('ready')
           this.onData.get(playerId)(data)
         })
-        console.debug(`peer ${playerId} added`)
+        // console.debug(`peer ${playerId} added`)
       }
       if (msg.hasOwnProperty('action')){
         PlayerProxyGRPCService.handleAction(playerId, msg['action'])

@@ -25,7 +25,6 @@ export class GameConsumer {
 
   @Process('game')
   async consume(_job: Job<unknown>) {
-    console.log(`Processing job ${_job.data}`)
     const job = _job as Job<CreateGameDto_test>
     const { data } = job;
     let progress = 0;
@@ -37,10 +36,6 @@ export class GameConsumer {
     const gameRuleInstanceUUID = gameRuleInstance.gameId
     // set up player proxies
     const players = data.players
-
-    job.progress(++progress);
-
-
     //preparing
 
     // prepare gamerule proxy
@@ -52,9 +47,9 @@ export class GameConsumer {
           run: '/usr/local/bin/ts-node ${@src}/game/gamerules/gameruleProxy/gamerule.test.ts',
         }
       ]
-    })
+    }).setTimeout(1000);
     gamerulePipeline.run() // Not to wait for the result
-    console.log(`gameRuleInstanceUUID: ${gameRuleInstanceUUID} is up`)
+
     // prepare player proxies
     const bot_players = players.filter(player => player.type === 'bot') as BotType[]
     const human_players = players.filter(player => player.type === 'human') as HumanType[]
@@ -65,20 +60,12 @@ export class GameConsumer {
       const playerInst = await PlayerFacade.ProxyPlayer(botPlayerConfig.name, botPlayerConfig.tags, botPlayerConfig.code)
       // register players to game
       // TODO: clean this
-      console.log(`Registering player ${playerInst.id} to game ${gameRuleInstanceUUID}`)
       gameInstance.registerGamer(playerInst.proxy)
       prepareBotPlayer(playerInst)
     }
 
-    job.progress(++progress);
 
-    //running
-    job.progress(++progress);
-
-    //finished
-    job.progress(++progress);
-
-    console.log(`Job ${_job.id} done`)
+    console.log(`Job ${_job.id} is running`)
     return 'done';
   }
 }

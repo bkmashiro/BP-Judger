@@ -13,6 +13,7 @@ export class BKPileline {
     "@src": config.src_path,
   }
   cache: object = {}
+  timeout: number = 0
   private readonly logger = new Logger(BKPileline.name);
   
   constructor(config_path: string | object) {
@@ -26,6 +27,16 @@ export class BKPileline {
   }
 
   async run() : Promise<object[]> {
+    if (this.config.hasOwnProperty('timeout')) {
+      this.setTimeout(this.config['timeout'])
+    }
+    if (this.timeout != 0) {
+      setTimeout(() => {
+        this.job_completion_strategy['stop']('Timeout')
+      }, this.timeout)
+    }
+
+
     const jobs = this.config['jobs']
     const onSuccess = this.config['onSuccess'] ?? 'next'
     const onFailure = this.config['onFailure'] ?? 'stop'
@@ -48,7 +59,7 @@ export class BKPileline {
         const duration = endTime - startTime
 
         this.logger.log(`${chalk.white('Job')} ${chalk.blueBright(job.name) } finished \t +${chalk.yellow(duration.toString(), 'ms')}`)
-        this.logger.log(`return value: ${chalk.greenBright(JSON.stringify(ret))}`)
+        // this.logger.log(`return value: ${chalk.greenBright(JSON.stringify(ret))}`)
         this.job_completion_strategy[onSuccess]()
         // bind the return value to context
         if (typeof ret === 'string') {
@@ -97,6 +108,11 @@ export class BKPileline {
 
   toObject() {
     return this.config
+  }
+
+  setTimeout(timeout: number) {
+    this.timeout = timeout
+    return this
   }
 } 
 
