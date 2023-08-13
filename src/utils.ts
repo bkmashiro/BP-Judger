@@ -47,7 +47,7 @@ export function recursive_render_obj(obj: object, ctx: object) {
   }
 }
 
-export function timeout(action: Promise<any>, ms: number): Promise<any> {
+export function timeout<T>(action: Promise<T>, ms: number): Promise<T> {
   return new Promise((resolve, reject) => {
     setTimeout(() => {
       reject(new Error(`Timeout after ${ms}ms`))
@@ -59,7 +59,6 @@ export function timeout(action: Promise<any>, ms: number): Promise<any> {
     })
   })
 }
-
 
 export function All(set: any, predicate: ((item: any) => boolean)) {
   for (const item of set) {
@@ -85,6 +84,12 @@ export function ifNotNullDo(func: any, ...args: any[]) {
   }
 }
 
+export function ifUndefinedThenAssign(obj: any, key: string, value: any) {
+  if (!obj.hasOwnProperty(key)) {
+    obj[key] = value
+  }
+}
+
 export function createCodeFingerprint(code: Code) {
   return createHash('sha256')
     .update(code.src)
@@ -92,6 +97,29 @@ export function createCodeFingerprint(code: Code) {
     .update(code.version)
     .digest('hex')
 }
+
+export async function timed<T>(func: () => T): Promise<[T, number]> {
+  const start = Date.now()
+  const result = await func()
+  const end = Date.now()
+  return Promise.resolve([result, end - start])
+}
+
+export function propEqualsThenDo<T>(obj: any, prop: string, value: any, func: (obj: any) => T) {
+  if (obj.hasOwnProperty(prop) && obj[prop] === value) {
+    return func(obj)
+  }
+  // Do nothing
+  return undefined
+}
+
+export function ifTrueThenDo<T>(condition: boolean | undefined, func: () => T) {
+  if (condition) {
+    return func()
+  }
+  return undefined
+}
+
 
 // WARNING: TYPE GYMNASTICS AHEAD
 // YOU SHALL NOT CHANGE ANYTHING BELOW

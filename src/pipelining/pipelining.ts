@@ -1,86 +1,86 @@
 import { JailedCommandAssembler, SystemCommandAssembler, runCommand } from "./executors/commandExecutor"
-import { IModule } from "./modules/IModule"
-import { recursive_render_obj, render } from "../utils"
+import { IModule, ModuleRunResult } from "./modules/IModule"
+import { propEqualsThenDo, recursive_render_obj, render, timed, timeout, ifTrueThenDo, ifNotNullDo, ifUndefinedThenAssign } from "../utils"
 import * as fs from 'fs'
 import * as path from 'path'
 import { config, base_config } from "../configs/config"
 import { Logger } from "@nestjs/common"
-import * as chalk from 'chalk';
+import chalk from 'chalk'
+import { Job } from "./pipelining.decl"
 
+const logger = new Logger('Pilelining');
 export class BKPileline {
   config: object
-  context: object = {
+  context: object = { // The following are predefined variables
     "@src": config.src_path,
   }
-  cache: object = {}
-  timeout: number = 0
-  private readonly logger = new Logger(BKPileline.name);
-  
+  timeout_ms: number = 0
+  onSuccess = 'next'
+  onFailure = 'stop'
+
   constructor(config_path: string | object) {
     if (typeof config_path === 'object') {
       this.config = config_path
     } else {
       this.config = JSON.parse(fs.readFileSync(config_path, 'utf8'))
     }
-    // this.context = this.config['constants'] ?? {}
     this.context = Object.assign(this.context, recursive_render_obj(this.config['constants'], this.context))
   }
 
-  async run() : Promise<object[]> {
-    if (this.config.hasOwnProperty('timeout')) {
-      this.setTimeout(this.config['timeout'])
-    }
-    if (this.timeout != 0) {
-      setTimeout(() => {
-        this.job_completion_strategy['stop']('Timeout')
-      }, this.timeout)
+  async run(ignore_timeout = false) : Promise<object[]> {
+    // if has timeout, run with timeout
+    if (!ignore_timeout && this.timeout_ms != 0) {
+      return timeout(this.run(true), this.timeout_ms)
     }
 
-
-    const jobs = this.config['jobs']
-    const onSuccess = this.config['onSuccess'] ?? 'next'
-    const onFailure = this.config['onFailure'] ?? 'stop'
+    const { jobs } = this.initRun()
     const rets = []
 
     for (const job of jobs) {
-      if(!job.hasOwnProperty('name')) {
-        job.name = '<Anonymous>'
-      }
-      const executor = new JobExecutor(job)
-      executor.inject(this.context)
+      formatJob(job)
+      const executor = new JobExecutor(job, this.context)
+
       try {
-        this.logger.log(`Running job ${job.name}`)
-        const startTime = Date.now()      // start time
-        
-        const ret = await executor.run()  // run job
+        logger.log(`Running job ${job.name}`)
+        const [ret, duration] = await timed(() => executor.run())
         rets.push(ret)
-
-        const endTime = Date.now()        // end time
-        const duration = endTime - startTime
-
-        this.logger.log(`${chalk.white('Job')} ${chalk.blueBright(job.name) } finished \t +${chalk.yellow(duration.toString(), 'ms')}`)
-        // this.logger.log(`return value: ${chalk.greenBright(JSON.stringify(ret))}`)
-        this.job_completion_strategy[onSuccess]()
-        // bind the return value to context
-        if (typeof ret === 'string') {
-          this.context[job.name] = ret
-        } else if (typeof ret === 'object') {
-          for (const key in ret) {
-            this.context[`${job.name}.${key}`] = ret[key]
-          }
-        }
+        logger.log(`${chalk.white('Job')} ${chalk.blueBright(job.name) } finished \t +${chalk.yellow(duration.toString(), 'ms')}`)
+        this.updateCtx(ret, job)
+        this.conditional(job, this.onSuccess)
       } catch (err) {
         console.log(`when executing job ${job.name}`, err)
-        this.job_completion_strategy[onFailure](err.message)
-        return err
+        this.conditional(job, this.onFailure)
+        throw err //by default, if a job failed, the whole pipeline failed
       }
     }
+
     return rets
+  }
+
+  private initRun() {
+    this.onSuccess = this.config['onSuccess'] ?? 'next'
+    this.onFailure = this.config['onFailure'] ?? 'stop'
+    const jobs = this.config['jobs']
+    return { jobs }
+  }
+
+  private conditional(job, strategy){
+    this.job_completion_strategy[strategy]()
   }
 
   job_completion_strategy = {
     'next': () => { },
     'stop': (msg: string) => { throw new Error(msg) },
+  }
+
+  private updateCtx(ret: Promise<unknown>, job: any) {
+    if (typeof ret === 'string') {
+      this.context[job.name] = ret
+    } else if (typeof ret === 'object') {
+      for (const key in ret) {
+        this.context[`${job.name}.${key}`] = ret[key]
+      }
+    }
   }
 
   static registerModule(module_name: string, module: IModule) {
@@ -111,10 +111,14 @@ export class BKPileline {
   }
 
   setTimeout(timeout: number) {
-    this.timeout = timeout
+    this.timeout_ms = timeout
     return this
   }
 } 
+
+function formatJob(job: object) {
+  ifUndefinedThenAssign(job, 'name', '<Anonymous>')
+}
 
 export function require_procedure(procedure_name: string) : ProcedurePiece {
   const procedure_path = path.resolve(config.configs_path,`./procedures/${procedure_name}.json`)
@@ -169,44 +173,46 @@ class ProcedurePiece {
 export class JobExecutor {
 
   context: object
-  job: object
+  job: Job
 
-  constructor(job: object) {
+  constructor(job: Job, context = {}) {
     this.job = job
-    this.context = {}
+    this.context = context
   }
 
-  async run() {
+  async run() : Promise<ModuleRunResult | any> {
     if (this.job.hasOwnProperty('run')) {
-      let command = render(this.job['run'], this.context)
-      if (!command) throw new Error(`Command is empty`)
-      //spilt command into command and args
-      const args = command.split(' ')
-      command = args.shift()
-
-      const assembled = this.assemble_command(command, args)
-      if (this.job.hasOwnProperty('verbose') && this.job['verbose']) {
-        console.log(`@running:`,assembled)
-      }
-      const ret = await runCommand(assembled)
-      if (this.job.hasOwnProperty('verbose') && this.job['verbose']) {
-        console.log(`@returing:`,ret)
-      }
-      return ret
-
+      return await this.handleRun()
     } else if (this.job.hasOwnProperty('use')) {
-      const module_name = this.job['use']
-      const with_ = recursive_render_obj(this.job['with'], this.context)
-      return this.run_module(module_name, with_, this.context)
+      return await this.handleUse()
     } else {
       throw new Error(`Unknown job type`)
     }
   }
 
+  private async handleUse() {
+    const module_name = this.job['use']
+    const with_ = recursive_render_obj(this.job['with'], this.context)
+    return await this.run_module(module_name, with_, this.context)
+  }
+
+  private async handleRun() {
+    let command = render(this.job['run'], this.context)
+    if (!command) throw new Error(`Command is empty`)
+    //spilt command into command and args
+    const args = command.split(' ')
+    command = args.shift()
+    const assembled = this.assemble_command(command, args)
+    ifTrueThenDo(this.job.verbose, () => console.log(`@assembled:`, assembled))
+    const ret = await runCommand(assembled)
+    ifTrueThenDo(this.job.verbose, () => console.log(`@returing:`, ret))
+    return ret
+  }
+
   assemble_command(command: string, args: string[]) { //TODO: refactor this, use interceptors
     let cmd: string = command
     if (this.job.hasOwnProperty('netns')) {
-      Object.assign(this.job['jail'], {disable_clone_newnet: true})
+      ifUndefinedThenAssign(this.job, 'jail', {disable_clone_newnet: true})
     }
 
     if (this.job.hasOwnProperty('jail')) {
