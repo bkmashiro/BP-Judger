@@ -10,18 +10,6 @@ import { Repository } from 'typeorm';
 export class PlayerService {
 
   async create(createPlayerDto: CreatePlayerDto) {
-
-    const player = await PlayerFacade.ProxyPlayer("test", ["test"], {
-      lang: "c++",
-      src: "#include <iostream>\nint main() { std::cout << \"Hello World!\" << std::endl; return 0; }",
-      filename: "test.cc",
-      version: "c++14",
-      tags: ["test"],
-      pipeline_name: 'cmake_g++_c++14_grpc_player_compile'
-    })
-
-    await player.prepare()
-
     return 'This action adds a new player';
   }
 

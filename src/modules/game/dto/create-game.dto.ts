@@ -9,6 +9,7 @@ export class CreateGameDto_test {
   }
 }
 
+
 export type BotType = {
   type: 'bot'
   botId: number
@@ -33,10 +34,22 @@ export type HumanPreparedType = {
 
 export type PreparedPlayerType = BotPreparedType | HumanPreparedType
 
-export type ExecutableConfig = {
+export type ExecutableConfig = { // The detail about how to compile/execute the executable is managed by BP-Judger, not the backend
   language: string
   version: string
   [key: string]: any
+}
+
+export type Version = {
+  uuid: string
+  major: number
+  minor: number
+  patch: number
+}
+
+export type VersionDescriptor = {
+  version: Version
+  sign: ">" | ">=" | "=" | "<=" | "<" 
 }
 
 export type Executable = {
@@ -45,10 +58,32 @@ export type Executable = {
 }
 
 export class CreateGameDto {
-  gameruleId: Executable
-  players: Executable[]
+  gamerule: CreateGameruleDTO
+  players: CreatePlayerDTO[]
   configs: {
     [key: string]: any
   }
 }
 
+class CreateGameruleDTO {
+  exec: Executable
+  version: Version
+}
+
+// Named/labeled union type
+type CreatePlayerDTO = CreateBotPlayerDTO | CreateHumanPlayerDTO
+
+class CreateBotPlayerDTO {
+  type: 'bot'
+  exec: Executable
+  version: Version
+  compat:{
+    gamerule: string
+    versions: VersionDescriptor[]
+  } 
+}
+
+class CreateHumanPlayerDTO {
+  type: 'human'
+  socket: any// TODO implement this
+}

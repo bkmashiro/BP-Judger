@@ -50,15 +50,14 @@ export class PlayerFacade implements IPlayerFacade {
 
   
   async prepare(): Promise<PreparedPlayerType> {
-    const starte = prepare_strategy[this.type]
-    if (starte) { 
-      return await starte.call(this, this)
+    const startegy = prepare_strategy[this.type]
+    if (startegy) { 
+      return await startegy.call(this, this)
     } 
-    throw new Error('Unknown player type')
+    throw new Error('Unknown player type or strategy not implemented')
   }
 }
-// TODO clean this
-// TODO use strategy pattern
+
 async function prepare_proxy_player({ code }: PlayerFacade) :Promise<PreparedPlayerType> {
   // 1. prepare code file
   // 2. compile (if needed)
@@ -122,9 +121,6 @@ async function prepare_code(code :Code) :Promise<string> {
 
   return codeOutPath
 }
-
-
-
 
 export interface IPlayerFacade {
   type: PlayerFacadeType;
