@@ -5,6 +5,7 @@ import { config } from '../../../configs/config';
 import { PlayerBase } from '../PlayerBase';
 import { PlayerMoveWarpper, PlayerID, PlayerStatus } from '../IPlayer';
 import { PlayerFactory, PlayerManager } from '../PlayerFactory';
+import { Logger } from '@nestjs/common';
 
 export class PlayerProxy extends PlayerBase {
   status: PlayerStatus = 'offline'
@@ -33,7 +34,7 @@ export class PlayerProxy extends PlayerBase {
 // PlayerProxyManager will set up gRPC server and handle the `move` function call from the player
 // this will specify which proxy to use 
 export class PlayerProxyManager extends PlayerFactory {
-
+  private static logger = new Logger('PlayerProxyManager')
   private static _instance: PlayerProxyManager
 
   static get instance(): PlayerProxyManager {
@@ -62,7 +63,7 @@ export class PlayerProxyManager extends PlayerFactory {
   }
 
   static removePlayerProxy(uuid: PlayerID) {
-    console.log(`Player ${uuid} removed`)
+    this.logger.log(`Player ${uuid} removed`)
     PlayerProxyManager.active_proxies.delete(uuid)
     PlayerProxyGRPCService.removePlayerPeer(uuid)
   }
@@ -76,7 +77,7 @@ export class PlayerProxyManager extends PlayerFactory {
       grpc.ServerCredentials.createInsecure(),
       () => this.server.start()
     );
-    console.log("PlayerProxyService is running on", config.playerProxyUrl)
+    this.logger.log("PlayerProxyService is running on", config.playerProxyUrl)
   }
 
   static shutdownServer() {
@@ -90,7 +91,7 @@ export class PlayerProxyManager extends PlayerFactory {
   }
 }
 
-
+const player_proxy_logger = new Logger('PlayerGRPC')
 // this is used to call client's move function by using stream
 class PlayerProxyGRPCService extends UnimplementedPlayerProxyService {
   static peers : Map<PlayerID, grpc.ServerDuplexStream<JsonMessage, JsonMessage>> = new Map()
@@ -107,14 +108,14 @@ class PlayerProxyGRPCService extends UnimplementedPlayerProxyService {
       const playerId = PlayerProxyGRPCService.updatePeers(obj, call)
     })
 
-    call.on('end', () => {
-      console.log(`peer ended`)
-    })
+    // call.on('end', () => {
+    //   console.log(`peer ended`)
+    // })
 
     call.on('error', (err: Error) => {
-      console.error(err)
+      player_proxy_logger.error(err)
       const playerId = PlayerProxyGRPCService.getIdByPeer(call)
-      console.log(`Client ${playerId} error: ${err}`)
+      // console.log(`Client ${playerId} error: ${err}`)
     })
   }
 
@@ -129,7 +130,7 @@ class PlayerProxyGRPCService extends UnimplementedPlayerProxyService {
           PlayerProxyManager.getPlayerProxy(playerId).setStatus('ready')
           this.onData.get(playerId)(data)
         })
-        console.debug(`peer ${playerId} added`)
+        // console.debug(`peer ${playerId} added`)
       }
       if (msg.hasOwnProperty('action')){
         PlayerProxyGRPCService.handleAction(playerId, msg['action'])

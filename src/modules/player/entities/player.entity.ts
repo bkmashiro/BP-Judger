@@ -48,37 +48,40 @@ export class PlayerFacade implements IPlayerFacade {
   }
   
 
+  
   async prepare(): Promise<PreparedPlayerType> {
-    if (this.type === PlayerFacadeType.PROXY) {
-      const execPath = await prepare_proxy_player(this)
-      logger.log(`Player ${this.id} prepared`)
-      return {
-        type: 'bot',
-        botId: this.id,
-        execPath,
-      }
-    } else if (this.type === PlayerFacadeType.HUMAN) {
-
-    } else if (this.type === PlayerFacadeType.LOCAL) {
-
-    } else {
-      throw new Error('Unknown player type')
-    }
+    const starte = prepare_strategy[this.type]
+    if (starte) { 
+      return await starte.call(this, this)
+    } 
+    throw new Error('Unknown player type')
   }
 }
-// TODO: clean this
-// TODO: use strategy pattern
-async function prepare_proxy_player({ code }: PlayerFacade) :Promise<string> {
+// TODO clean this
+// TODO use strategy pattern
+async function prepare_proxy_player({ code }: PlayerFacade) :Promise<PreparedPlayerType> {
   // 1. prepare code file
   // 2. compile (if needed)
-  
-  const executable = prepare_code(code)
+  const executable = await prepare_code(code)
 
-
-
-  return executable
+  return {
+    type: 'bot',
+    botId: this.id,
+    execPath: executable,
+  }
 }
 
+export enum PlayerFacadeType {
+  HUMAN = "human",
+  PROXY = "proxy",
+  LOCAL = "local", // NOT USED
+}
+
+const prepare_strategy = {
+  [PlayerFacadeType.PROXY]: prepare_proxy_player,
+  [PlayerFacadeType.HUMAN]: null,
+  [PlayerFacadeType.LOCAL]: null,
+}
 
 
 async function prepare_code(code :Code) :Promise<string> {
@@ -121,11 +124,7 @@ async function prepare_code(code :Code) :Promise<string> {
 }
 
 
-export enum PlayerFacadeType {
-  HUMAN = "human",
-  PROXY = "proxy",
-  LOCAL = "local", // NOT USED
-}
+
 
 export interface IPlayerFacade {
   type: PlayerFacadeType;
@@ -148,7 +147,6 @@ export interface Code {
   pipeline_name?: string;
   [key: string]: any;
 }
-
 export interface IBotPlayer extends IPlayerFacade {
   type: PlayerFacadeType.PROXY;
   code: Code;

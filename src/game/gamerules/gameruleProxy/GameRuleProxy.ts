@@ -7,6 +7,7 @@ import { config } from "../../../configs/config";
 import { GameRuleFactory } from "../GameRuleFactory";
 import { GameRuleBase } from "../GameRuleBase";
 import { GameID, PlayerMoveWarpper } from "../../../game/players/IPlayer";
+import { Logger } from "@nestjs/common";
 
 export class GameRuleProxy extends GameRuleBase {
   gameId: GameID // A game is always bind to a gamerule
@@ -115,7 +116,7 @@ export class GameRuleProxy extends GameRuleBase {
 }
 
 export class GameRuleProxyManager extends GameRuleFactory {
-
+  private static logger = new Logger("GameRuleProxyManager")
   private static _instance: GameRuleProxyManager
 
   static get instance(): GameRuleProxyManager {
@@ -141,7 +142,7 @@ export class GameRuleProxyManager extends GameRuleFactory {
   }
 
   static removeGameRuleProxy(uuid: GameID) {
-    console.log(`GameRule ${uuid} removed`)
+    GameRuleProxyManager.logger.log(`GameRule ${uuid} removed`)
     GameRuleProxyManager.active_proxies.delete(uuid)
   }
 
@@ -159,7 +160,7 @@ export class GameRuleProxyManager extends GameRuleFactory {
         this.server.start()
       }
     );
-    console.log("GameRuleProxyService is running on", config.gameRuleProxyUrl)
+    GameRuleProxyManager.logger.log("GameRuleProxyService is running on", config.gameRuleProxyUrl)
   }
 
   static shutdownServer() {

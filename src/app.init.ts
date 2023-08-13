@@ -23,7 +23,6 @@ export default function Init() {
     dirs.forEach(dir => {
       makeDirIfNotExist(dir)
     })
-    console.log('dirs Init success')
   } catch (e) {
     console.error(e)
     throw Error('Init failed: make dir failed')
