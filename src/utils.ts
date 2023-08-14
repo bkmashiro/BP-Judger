@@ -1,6 +1,7 @@
 import { createHash } from "crypto";
 import { Code } from "./modules/player/entities/player.entity";
 import * as fs from 'fs/promises';
+import { Version, VersionDescriptor } from "./modules/game/dto/create-game.dto";
 
 
 export function delay(ms: number) {
@@ -219,4 +220,88 @@ function swapArguments<T extends any[], IndexFrom extends number, IndexTo extend
     const swappedArgs = args as ArgumentMap<T, IndexFrom, IndexTo>;
     return fn.apply(null, swappedArgs);
   };
+}
+
+function compareVersions(v1: Version, v2: Version): number {
+  if (v1.major !== v2.major) {
+    return v1.major - v2.major;
+  }
+  if (v1.minor !== v2.minor) {
+    return v1.minor - v2.minor;
+  }
+  return v1.patch - v2.patch;
+}
+
+function isVersionInRange(version: Version, descriptor: VersionDescriptor): boolean {
+  const comparison = compareVersions(version, descriptor.version);
+
+  switch (descriptor.sign) {
+    case ">":
+      return comparison > 0;
+    case ">=":
+      return comparison >= 0;
+    case "=":
+      return comparison === 0;
+    case "<=":
+      return comparison <= 0;
+    case "<":
+      return comparison < 0;
+    default:
+      throw new Error("Invalid comparison sign");
+  }
+}
+
+function isVersionInRanges(version: Version, ranges: VersionDescriptor[]): boolean {
+  for (const range of ranges) {
+    if (!isVersionInRange(version, range)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function formatVersionDescriptor(descriptor: VersionDescriptor): string {
+  return `${descriptor.sign}${formatVersion(descriptor.version)}`;
+}
+
+function formatVersion(version: Version): string {
+  return `${version.major}.${version.minor}.${version.patch}`;
+}
+
+function parseVersion(versionStr: string): Version | null {
+  const versionRegex = /^(\d+)\.(\d+)\.(\d+)$/;
+  const matches = versionStr.match(versionRegex);
+
+  if (!matches) {
+    return null; // Invalid version string format
+  }
+
+  const [, majorStr, minorStr, patchStr] = matches;
+  const major = parseInt(majorStr, 10);
+  const minor = parseInt(minorStr, 10);
+  const patch = parseInt(patchStr, 10);
+
+  if (isNaN(major) || isNaN(minor) || isNaN(patch)) {
+    return null; // Invalid numeric components
+  }
+
+  return { major, minor, patch };
+}
+
+function parseVersionDescriptor(descriptorStr: string): VersionDescriptor | null {
+  const versionDescriptorRegex = /^([><=]+)(\d+\.\d+\.\d+)$/;
+  const matches = descriptorStr.match(versionDescriptorRegex);
+
+  if (!matches) {
+    return null; // Invalid version descriptor string format
+  }
+
+  const [, sign, versionStr] = matches;
+  const version = parseVersion(versionStr);
+
+  if (!version) {
+    return null; // Invalid version format
+  }
+
+  return { version, sign: sign as VersionDescriptor['sign'] };
 }

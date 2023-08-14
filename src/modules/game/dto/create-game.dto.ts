@@ -41,7 +41,6 @@ export type ExecutableConfig = { // The detail about how to compile/execute the 
 }
 
 export type Version = {
-  uuid: string
   major: number
   minor: number
   patch: number
@@ -85,5 +84,5 @@ class CreateBotPlayerDTO {
 
 class CreateHumanPlayerDTO {
   type: 'human'
-  socket: any// TODO implement this
+  socket: any  // TODO implement this
 }
