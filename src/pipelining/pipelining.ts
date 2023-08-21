@@ -42,6 +42,7 @@ export class BKPileline {
 
     for (const job of jobs) {
       formatJob(job)
+
       const executor = new JobExecutor(job, this.context)
 
       try {
@@ -50,10 +51,10 @@ export class BKPileline {
         rets.push(ret)
         logger.log(`${chalk.white('Job')} ${chalk.blueBright(job.name)} finished \t +${chalk.yellow(duration.toString(), 'ms')}`)
         this.updateCtx(ret, job)
-        this.conditional(job, this.onSuccess)
+        this.conditional(this.onSuccess)
       } catch (err) {
         console.log(`when executing job ${job.name}`, err)
-        this.conditional(job, this.onFailure)
+        this.conditional(this.onFailure)
         throw err //by default, if a job failed, the whole pipeline failed
       }
     }
@@ -68,7 +69,7 @@ export class BKPileline {
     return { jobs }
   }
 
-  private conditional(job, strategy) {
+  private conditional(strategy) {
     this.job_completion_strategy[strategy]()
   }
 

@@ -12,6 +12,7 @@ import { GameruleFacade } from '../gamerule/entities/gameruleFacade.entity';
 import { NsJailConfig } from 'src/jail/NsjailRush';
 import { InjectRepository } from '@nestjs/typeorm';
 import { PlayerProxyManager } from 'src/game/players/playerProxy/playerProxy';
+import { GameFacade } from './entities/gameFacade.entity';
 
 @Processor('game')
 export class GameConsumer {
@@ -30,6 +31,7 @@ export class GameConsumer {
     let progress = 0;
     // setup
     // setup game
+    const gameFacade = new GameFacade('GameRuleProxy')
     const gameInst = GameManager.newGame('GameRuleProxy')
     // set up gamerule
     const gameRuleInstance = gameInst.gameRule as GameRuleProxy

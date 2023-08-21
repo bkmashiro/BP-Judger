@@ -37,7 +37,7 @@ export class GameManager {
 
     const gameId = GameManager.newGameID()
     
-    const game = new Game(gameId, GameRuleManager.instantiate(gameruleName, gameId))
+    const game = new Game(gameId, GameRuleManager.instantiate(gameruleName))
     GameManager.activeGames[gameId] = game
     return game
   }
@@ -49,13 +49,13 @@ export class GameManager {
 }
 
 export class GameRuleManager {
-  static gameRules: Record<GameRuleName, IGameRuleConstructor | GameRuleFactory> = {}
+  static gameRules: Record<string, IGameRuleConstructor | GameRuleFactory> = {}
 
   static get(gameRuleName: GameRuleName) {
     return GameRuleManager.gameRules[gameRuleName]
   }
 
-  static instantiate(gameRuleName: GameRuleName, bindTo) {
+  static instantiate(gameRuleName: GameRuleName) {
     const gameRule = GameRuleManager.get(gameRuleName)
     let gamerule = null
 

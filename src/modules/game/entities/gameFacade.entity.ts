@@ -4,6 +4,7 @@ import { Gameover } from "./gameover.entity"
 import { Entity } from "typeorm"
 import { GameManager } from "src/game/game"
 import { GameRuleProxy } from "src/game/gamerules/gameruleProxy/GameRuleProxy"
+import { GameRuleName } from "src/game/players/IPlayer"
 
 
 type GameState = 'setup' | 'preparing' | 'running' | 'finished' | 'error' | 'paused' | 'aborted' | 'unknown'
@@ -16,11 +17,12 @@ export class GameFacade {
   error?: string
   gameover?: Gameover
   // [key: string]: any
-  constructor(gameRuleName: string = 'GameRuleProxy') {
+  constructor(gameRuleName: GameRuleName = 'GameRuleProxy') {
     const gameInst = GameManager.newGame(gameRuleName)
     const gameRuleInstance = gameInst.gameRule as GameRuleProxy
     const gameRuleInstanceUUID = gameRuleInstance.gameId
   }
+
 
   static fromObject(obj: any): GameFacade {
     const game = new GameFacade()
