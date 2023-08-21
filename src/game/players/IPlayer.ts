@@ -18,5 +18,5 @@ export type PlayerMove = any
 
 export type GameID = string
 export type PlayerID = string
-export type GameName = string
+export type GameRuleName = "GameRuleProxy" | "human" | string
 export type PlayerStatus = 'online' | 'offline' | 'playing' | 'waiting' | 'ready' | 'error' | 'unknown' | 'unset'

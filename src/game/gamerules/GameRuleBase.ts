@@ -1,5 +1,5 @@
 import { EventEmitter } from "events"
-import { GameContext, MatchContext } from "../game"
+import { Game, GameContext, MatchContext } from "../game"
 import { IGameRule } from "./IGameRule"
 import { PlayerMove, PlayerMoveWarpper } from "../players/IPlayer"
 
@@ -7,6 +7,7 @@ export abstract class GameRuleBase extends EventEmitter implements IGameRule {
   status: GameRuleStatus = "offline" 
   ctx: GameContext
   secret: { [key: string]: any } = {}
+  parent: Game
 
   abstract validate_game_pre_requirements(ctx: MatchContext): Promise<boolean>
 
@@ -21,6 +22,14 @@ export abstract class GameRuleBase extends EventEmitter implements IGameRule {
    * DO NOT REMOVE THIS METHOD */ 
   bind_ctx(gameContext: GameContext): void {
     this.ctx = gameContext
+  }
+
+  /**
+   * Note that this method wont always be called
+   * @param game 
+   */
+  bind_parent(game: Game): void {
+    this.parent = game
   }
 
   abstract init_game(ctx: MatchContext):  Promise<void>

@@ -10,7 +10,11 @@ import { GameID, PlayerMoveWarpper } from "../../../game/players/IPlayer";
 import { Logger } from "@nestjs/common";
 
 export class GameRuleProxy extends GameRuleBase {
-  gameId: GameID // A game is always bind to a gamerule
+  
+  public get gameId() : string {
+    return this.gameId
+  }
+   // A game is always bind to a gamerule
 
   rgs: Record<string, RG> = {
     "ValidateGamePreRequirements": null,
@@ -20,11 +24,10 @@ export class GameRuleProxy extends GameRuleBase {
     "InitGame": null,
   }
 
-  constructor(gameId: GameID) {
+  constructor() {
     super()
-    this.gameId = gameId
-    this.on("rg-registered", () => {
-      const _ = this.isReady()
+    this.on("rg-registered", async () => {
+      const _ = await this.isReady() // just to update status
     })
   }
 
@@ -104,7 +107,7 @@ export class GameRuleProxy extends GameRuleBase {
   override gameover(): this {
     super.gameover()
     this.close()
-    GameRuleProxyManager.removeGameRuleProxy(this.gameId)
+    GameRuleProxyManager.remove(this.gameId)
     return this
   }
 
@@ -127,21 +130,27 @@ export class GameRuleProxyManager extends GameRuleFactory {
   }
 
   static active_proxies: Map<GameID, GameRuleBase> = new Map()
+
+  static set(proxy: GameRuleBase) {
+    GameRuleProxyManager.active_proxies.set(proxy.parent.uuid, proxy)
+  }
+
   private constructor() {
     super()
     GameRuleProxyManager.startServer()
   }
-  newGameRuleProxy(uuid: string): GameRuleBase {
-    const proxy = new GameRuleProxy(uuid)
-    GameRuleProxyManager.active_proxies.set(uuid, proxy)
+
+  newGameRuleProxy(): GameRuleBase {
+    const proxy = new GameRuleProxy()
+    GameRuleProxyManager.set(proxy)
     return proxy
   }
 
-  static getGameRuleProxy(uuid: GameID): GameRuleProxy | undefined {
+  static get(uuid: GameID): GameRuleProxy | undefined {
     return GameRuleProxyManager.active_proxies.get(uuid) as GameRuleProxy
   }
 
-  static removeGameRuleProxy(uuid: GameID) {
+  static remove(uuid: GameID) {
     GameRuleProxyManager.logger.log(`GameRule ${uuid} removed`)
     GameRuleProxyManager.active_proxies.delete(uuid)
   }

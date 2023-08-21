@@ -56,7 +56,7 @@ export class RG extends EventEmitter {
     if (id) { // set id when received one 
       this.id = id //TODO Extrat this
       RG.RGS.set(id, this)
-      GameRuleProxyManager.getGameRuleProxy(id).register_rg(this)
+      GameRuleProxyManager.get(id).register_rg(this)
     } else throw new Error("[RG.onReady] No id found in data")
     this.emit("on-ready", msg)
   }

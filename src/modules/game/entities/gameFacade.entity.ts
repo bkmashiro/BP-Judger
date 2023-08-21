@@ -16,7 +16,7 @@ export class GameFacade {
   error?: string
   gameover?: Gameover
   // [key: string]: any
-  constructor(gameRuleName?: string) {
+  constructor(gameRuleName: string = 'GameRuleProxy') {
     const gameInst = GameManager.newGame(gameRuleName)
     const gameRuleInstance = gameInst.gameRule as GameRuleProxy
     const gameRuleInstanceUUID = gameRuleInstance.gameId

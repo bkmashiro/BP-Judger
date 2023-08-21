@@ -3,7 +3,7 @@ import { POSTModule } from "../pipelining/modules/testModules/POSTModule";
 import { BKPileline } from "../pipelining/pipelining";
 import { GuessNumberGame } from "./gamerules/local/GuessNumber/GuessNumberGame";
 import { Noob as NoobPlayer } from "./gamerules/local/GuessNumber/bots/ts/Noob";
-import { GameManager } from "./game";
+import { GameManager, GameRuleManager } from "./game";
 import { PlayerProxyManager as PlayerProxyFactory } from "./players/playerProxy/playerProxy";
 import { PlayerModule } from "../pipelining/modules/playerModule/playerModule";
 import { GameRuleProxyManager as GameRuleProxyFactory } from "./gamerules/gameruleProxy/GameRuleProxy";
@@ -11,8 +11,8 @@ import { PlayerManager } from "./players/PlayerFactory";
 
 
 ; (async () => {
-  GameManager.registerGameRule('GuessNumber', GuessNumberGame) // Local TS gamerule
-  GameManager.registerGameRule('GameRuleProxy', GameRuleProxyFactory.instance) // Remote gRPC gamerule
+  GameRuleManager.registerGameRule('GuessNumber', GuessNumberGame) // Local TS gamerule
+  GameRuleManager.registerGameRule('GameRuleProxy', GameRuleProxyFactory.instance) // Remote gRPC gamerule
   
   PlayerManager.registerGamerType('noob', NoobPlayer)                 // register prototype class
   PlayerManager.registerGamerType('proxy', PlayerProxyFactory.instance)  // register factory 

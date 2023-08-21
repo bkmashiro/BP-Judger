@@ -3,7 +3,7 @@ import { CreateGameDto_test } from './dto/create-game.dto';
 import { UpdateGameDto } from './dto/update-game.dto';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
-import { GameManager } from 'src/game/game';
+import { GameManager, GameRuleManager } from 'src/game/game';
 import { GameRuleProxyManager } from 'src/game/gamerules/gameruleProxy/GameRuleProxy';
 import { PlayerManager } from 'src/game/players/PlayerFactory';
 import { PlayerProxyManager } from 'src/game/players/playerProxy/playerProxy';
@@ -18,7 +18,7 @@ export class GameService {
   constructor(
     @InjectQueue('game') private readonly gameQueue: Queue,
   ) {
-    GameManager.registerGameRule('GameRuleProxy', GameRuleProxyManager.instance) // Remote gRPC gamerule
+    GameRuleManager.registerGameRule('GameRuleProxy', GameRuleProxyManager.instance) // Remote gRPC gamerule
     PlayerManager.registerGamerType('proxy', PlayerProxyManager.instance)  // register factory 
     BKPileline.registerModule('player', new PlayerModule())
     BKPileline.registerModule('compile', new CompileModule())

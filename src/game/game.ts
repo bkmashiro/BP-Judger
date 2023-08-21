@@ -1,12 +1,13 @@
 import { EventEmitter } from "events"
 import { Mutex } from 'async-mutex';
-import { GameID, GameName, IPlayer, PlayerID } from "./players/IPlayer"
+import { GameID, GameRuleName, IPlayer, PlayerID } from "./players/IPlayer"
 import { PlayerBase } from "./players/PlayerBase";
 import { GameRuleFactory } from "./gamerules/GameRuleFactory";
 import { GameRuleBase, IGameRuleConstructor, GAME_SHALL_OVER, GAME_SHALL_BEGIN } from "./gamerules/GameRuleBase";
 import { config } from "../configs/config";
 import { All } from "src/utils";
 import { Logger } from "@nestjs/common";
+import { GameRuleProxy } from "./gamerules/gameruleProxy/GameRuleProxy";
 
 export type GameContext = {
   "players": Record<PlayerID, IPlayer>,
@@ -28,38 +29,51 @@ export type MatchContext = {
 
 export class GameManager {
   static activeGames: Record<GameID, Game> = {}
-  static gameRules: Record<GameName, IGameRuleConstructor | GameRuleFactory> = {}
 
-  public static newGame(gameruleName: GameName) {
-    if (!GameManager.gameRules.hasOwnProperty(gameruleName)) {
+  public static newGame(gameruleName: GameRuleName)  {
+    if (!GameRuleManager.gameRules.hasOwnProperty(gameruleName)) {
       throw new Error(`Game ${gameruleName} not found`)
     }
-    const gameRule = GameManager.gameRules[gameruleName]
 
     const gameId = GameManager.newGameID()
-    let gamerule = null
-    if (gameRule instanceof GameRuleFactory) {
-      gamerule = gameRule.newGameRuleProxy(gameId)
-    } else {
-      gamerule = new gameRule()
-    }
-    const game = new Game(gameId, gamerule)
+    
+    const game = new Game(gameId, GameRuleManager.instantiate(gameruleName, gameId))
     GameManager.activeGames[gameId] = game
     return game
   }
 
-
   static newGameID() {
     return "ac856d20-4e9c-409f-b1b3-d2d41a1df9a0"
     // return randomUUID()
+  }
+}
+
+export class GameRuleManager {
+  static gameRules: Record<GameRuleName, IGameRuleConstructor | GameRuleFactory> = {}
+
+  static get(gameRuleName: GameRuleName) {
+    return GameRuleManager.gameRules[gameRuleName]
+  }
+
+  static instantiate(gameRuleName: GameRuleName, bindTo) {
+    const gameRule = GameRuleManager.get(gameRuleName)
+    let gamerule = null
+
+    if (gameRule instanceof GameRuleFactory) {
+      gamerule = gameRule.newGameRuleProxy()
+    } else {
+      gamerule = new gameRule()
+    }
+
+    return gamerule
   }
 
   static hasGame(gameId: GameID) { return GameManager.activeGames.hasOwnProperty(gameId) }
 
   static getGame(gameId: GameID) { return GameManager.activeGames[gameId] }
 
-  static registerGameRule(gameName: GameName, gameRule: IGameRuleConstructor | GameRuleFactory) {
-    GameManager.gameRules[gameName] = gameRule
+  static registerGameRule(gameName: GameRuleName, gameRule: IGameRuleConstructor | GameRuleFactory) {
+    GameRuleManager.gameRules[gameName] = gameRule
   }
 }
 
@@ -89,7 +103,7 @@ export class Game extends EventEmitter {
     }
 
     this.gameRule.bind_ctx(this.game_ctx)
-
+    gameRule.bind_parent(this)
     gameRule.on('ready', () => {
       this.emit('status-change')
     })
