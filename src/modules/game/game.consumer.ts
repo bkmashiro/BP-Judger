@@ -4,11 +4,11 @@ import { BotPreparedType, BotType, CreateGameDto_test, HumanType } from './dto/c
 import { GameManager } from 'src/game/game';
 import { GameRuleProxy } from 'src/game/gamerules/gameruleProxy/GameRuleProxy';
 import { BKPileline } from 'src/pipelining/pipelining';
-import { PlayerFacade as PlayerFacade } from '../player/entities/player.entity';
+import { PlayerFacade as PlayerFacade } from '../player/entities/playerFacade.entity';
 import { Inject } from '@nestjs/common';
 import { Bot } from '../bot/entities/bot.entity';
 import { Repository } from 'typeorm';
-import { GameruleInstance } from '../gamerule/entities/gamerule.entity';
+import { GameruleFacade } from '../gamerule/entities/gameruleFacade.entity';
 import { NsJailConfig } from 'src/jail/NsjailRush';
 import { InjectRepository } from '@nestjs/typeorm';
 import { PlayerProxyManager } from 'src/game/players/playerProxy/playerProxy';
@@ -19,8 +19,8 @@ export class GameConsumer {
   constructor(
     @InjectRepository(Bot)
     private readonly botRepository: Repository<Bot>,
-    @InjectRepository(GameruleInstance)
-    private readonly gameruleRepository: Repository<GameruleInstance>,
+    @InjectRepository(GameruleFacade)
+    private readonly gameruleRepository: Repository<GameruleFacade>,
   ) { }
 
   @Process('game')
@@ -30,9 +30,9 @@ export class GameConsumer {
     let progress = 0;
     // setup
     // setup game
-    const gameInstance = GameManager.newGame('GameRuleProxy')
+    const gameInst = GameManager.newGame('GameRuleProxy')
     // set up gamerule
-    const gameRuleInstance = gameInstance.gameRule as GameRuleProxy
+    const gameRuleInstance = gameInst.gameRule as GameRuleProxy
     const gameRuleInstanceUUID = gameRuleInstance.gameId
     // set up player proxies
     const players = data.players
@@ -40,14 +40,12 @@ export class GameConsumer {
 
     // prepare gamerule proxy
     const gameRuleId = data.gameruleId //TODO: need to use this id to get gamerule
-    const gamerulePipeline = new BKPileline({
-      jobs: [
+    const gamerulePipeline = BKPileline.fromJobs(
         {
           name: 'run_test_gamerule',
           run: '/usr/local/bin/ts-node ${@src}/game/gamerules/gameruleProxy/gamerule.test.ts',
         }
-      ]
-    }).setTimeout(20000);
+    ).setTimeout(20000);
     gamerulePipeline.run() // Not to wait for the result
 
     // prepare player proxies
@@ -60,7 +58,7 @@ export class GameConsumer {
       const playerInst = await PlayerFacade.ProxyPlayer(botPlayerConfig.name, botPlayerConfig.tags, botPlayerConfig.code)
       // register players to game
       // TODO: clean this
-      gameInstance.registerGamer(playerInst.proxy)
+      gameInst.registerGamer(playerInst.proxy)
       prepareBotPlayer(playerInst)
     }
 

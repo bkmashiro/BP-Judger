@@ -1,5 +1,5 @@
-import { GameruleID } from "../../gamerule/entities/gamerule.entity"
-import { PlayerFacadeID } from "../../player/entities/player.entity"
+import { GameruleID } from "../../gamerule/entities/gameruleFacade.entity"
+import { PlayerFacadeID } from "../../player/entities/playerFacade.entity"
 
 export class CreateGameDto_test {
   gameruleId: number

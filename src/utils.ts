@@ -1,5 +1,5 @@
 import { createHash } from "crypto";
-import { Code } from "./modules/player/entities/player.entity";
+import { Code } from "./modules/player/entities/playerFacade.entity";
 import * as fs from 'fs/promises';
 import { Version, VersionDescriptor } from "./modules/game/dto/create-game.dto";
 
@@ -106,7 +106,7 @@ export function createCodeFingerprint(code: Code) {
     .digest('hex')
 }
 
-export async function timed<T>(func: () => T): Promise<[T, number]> {
+export async function timed<T>(func: () => Promise<T>): Promise<[T, number]> {
   const start = Date.now()
   const result = await func()
   const end = Date.now()

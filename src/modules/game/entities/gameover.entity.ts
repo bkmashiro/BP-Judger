@@ -1,9 +1,9 @@
-import { IPlayerFacade } from "../../player/entities/player.entity";
-import { Game } from "./game.entity";
+import { IPlayerFacade } from "../../player/entities/playerFacade.entity";
+import { GameFacade } from "./gameFacade.entity";
 
 
 export class Gameover {
-  game: Game
+  game: GameFacade
   winner: IPlayerFacade
   output: string
 }

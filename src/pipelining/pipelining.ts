@@ -10,6 +10,9 @@ import { Job } from "./pipelining.decl"
 import { NsJail } from "src/jail/NsjailRush"
 
 const logger = new Logger('Pilelining');
+
+
+
 export class BKPileline {
   config: object
   context: object = { // The following are predefined variables
@@ -74,7 +77,7 @@ export class BKPileline {
     'stop': (msg: string) => { throw new Error(msg) },
   }
 
-  private updateCtx(ret: Promise<unknown>, job: any) {
+  private updateCtx(ret: Promise<unknown>, job: Job) {
     if (typeof ret === 'string') {
       this.context[job.name] = ret
     } else if (typeof ret === 'object') {
@@ -97,7 +100,7 @@ export class BKPileline {
     return new BKPileline(config)
   }
 
-  public static fromJobs(...jobs: object[]) {
+  public static fromJobs(...jobs: Job[]) {
     return new BKPileline({
       jobs: jobs
     })
@@ -117,7 +120,7 @@ export class BKPileline {
   }
 }
 
-function formatJob(job: object) {
+function formatJob(job: Job) {
   ifUndefinedThenAssign(job, 'name', '<Anonymous>')
 }
 
