@@ -4,7 +4,7 @@ import { PlayerBase } from "./PlayerBase"
 export interface IPlayer {
   uuid: string
   move(context: MatchContext): Promise<PlayerMoveWarpper>
-  status: PlayerStatus 
+  status: PlayerStatus
 }
 
 export type IPlayerConstructor = (new (uuid: string) => PlayerBase);

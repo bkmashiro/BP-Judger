@@ -1,8 +1,9 @@
-import { Code } from "src/modules/player/entities/player.entity"
+
+import { Code } from "src/modules/player/entities/playerFacade.entity"
 import { Column, Entity, Index, PrimaryColumn, PrimaryGeneratedColumn } from "typeorm"
 
 @Entity()
-export class Bot {
+export class BotConfig {
   @PrimaryGeneratedColumn()
   id: number
   @Column()

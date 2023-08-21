@@ -9,15 +9,18 @@ import { Logger } from "@nestjs/common";
 import { FileCache } from "src/pipelining/modules/FileCacheModule/fileCacheModule";
 import { PreparedPlayerType } from "src/modules/game/dto/create-game.dto";
 import { FileHelper, createCodeFingerprint } from "src/utils";
+import { PlayerBase } from "src/game/players/PlayerBase";
+import { BotConfig } from "src/modules/bot/entities/bot.entity";
 
 export type PlayerFacadeID = string
 const logger = new Logger('PlayerFacade')
-export class PlayerFacade implements IPlayerFacade {
+export class PlayerFacade {
   type: PlayerFacadeType
   name: string
   tags: string[]
   code?: Code
   proxy?: PlayerProxy
+  player: PlayerBase
   
 
   static fromObject(player: CreatePlayerDto): PlayerFacade {
@@ -27,14 +30,20 @@ export class PlayerFacade implements IPlayerFacade {
     return newPlayer
   }
   
-
-  static async ProxyPlayer(name: string, tags: string[], code: Code): Promise<PlayerFacade> {
+  static get(type : 'proxied' |'human', config: BotConfig) {
     const player = new PlayerFacade()
-    player.type = PlayerFacadeType.PROXY
-    player.proxy = PlayerProxyManager.instance.newPlayer()
-    player.name = name
-    player.tags = tags
-    player.code = code
+    if (type === 'proxied') {
+      player.type = PlayerFacadeType.PROXY
+      player.proxy = PlayerProxyManager.instance.newPlayer()
+      player.name = config.name
+      player.tags = config.tags
+      player.code = config.code
+    } else if (type === 'human') {
+      throw new Error('Not implemented')
+    } else {
+      throw new Error('Unknown player type')
+    }
+    
     return player
   }
 

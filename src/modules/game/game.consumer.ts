@@ -6,7 +6,7 @@ import { GameRuleProxy } from 'src/game/gamerules/gameruleProxy/GameRuleProxy';
 import { BKPileline } from 'src/pipelining/pipelining';
 import { PlayerFacade as PlayerFacade } from '../player/entities/playerFacade.entity';
 import { Inject } from '@nestjs/common';
-import { Bot } from '../bot/entities/bot.entity';
+import { BotConfig } from '../bot/entities/bot.entity';
 import { Repository } from 'typeorm';
 import { GameruleFacade } from '../gamerule/entities/gameruleFacade.entity';
 import { NsJailConfig } from 'src/jail/NsjailRush';
@@ -18,8 +18,8 @@ import { GameFacade } from './entities/gameFacade.entity';
 export class GameConsumer {
 
   constructor(
-    @InjectRepository(Bot)
-    private readonly botRepository: Repository<Bot>,
+    @InjectRepository(BotConfig)
+    private readonly botRepository: Repository<BotConfig>,
     @InjectRepository(GameruleFacade)
     private readonly gameruleRepository: Repository<GameruleFacade>,
   ) { }
@@ -31,12 +31,8 @@ export class GameConsumer {
     let progress = 0;
     // setup
     // setup game
-    const gameFacade = new GameFacade('GameRuleProxy')
-    const gameInst = GameManager.newGame('GameRuleProxy')
-    // set up gamerule
-    const gameRuleInstance = gameInst.gameRule as GameRuleProxy
-    const gameRuleInstanceUUID = gameRuleInstance.gameId
-    // set up player proxies
+    const game = new GameFacade('GameRuleProxy')
+    const gameRuleInstanceUUID = game.uuid
     const players = data.players
     //preparing
 
@@ -57,11 +53,11 @@ export class GameConsumer {
     for (const bot_player of bot_players) {
       const botPlayerConfig = await this.botRepository.findOne({ where: { id: bot_player.botId } }) // TODO: need to use this config to get bot
       const { memory_limit } = await this.gameruleRepository.findOne({ where: { id: gameRuleId } }) // TODO: need to use this config to get bot
-      const playerInst = await PlayerFacade.ProxyPlayer(botPlayerConfig.name, botPlayerConfig.tags, botPlayerConfig.code)
+      const player = PlayerFacade.get('proxied', botPlayerConfig)
       // register players to game
       // TODO: clean this
-      gameInst.registerGamer(playerInst.proxy)
-      prepareBotPlayer(playerInst)
+      game.registerGamer(player)
+      prepareBotPlayer(player)
     }
 
 

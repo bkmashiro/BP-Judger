@@ -2,7 +2,7 @@ import { IPlayerFacade, PlayerFacade } from "../../player/entities/playerFacade.
 import { GameruleFacade } from "../../gamerule/entities/gameruleFacade.entity"
 import { Gameover } from "./gameover.entity"
 import { Entity } from "typeorm"
-import { GameManager } from "src/game/game"
+import { Game, GameManager } from "src/game/game"
 import { GameRuleProxy } from "src/game/gamerules/gameruleProxy/GameRuleProxy"
 import { GameRuleName } from "src/game/players/IPlayer"
 
@@ -11,6 +11,7 @@ type GameState = 'setup' | 'preparing' | 'running' | 'finished' | 'error' | 'pau
 
 export class GameFacade {
   uuid: string
+  game: Game
   players: IPlayerFacade[]
   gamerule: GameruleFacade
   state: GameState
@@ -18,11 +19,13 @@ export class GameFacade {
   gameover?: Gameover
   // [key: string]: any
   constructor(gameRuleName: GameRuleName = 'GameRuleProxy') {
-    const gameInst = GameManager.newGame(gameRuleName)
-    const gameRuleInstance = gameInst.gameRule as GameRuleProxy
-    const gameRuleInstanceUUID = gameRuleInstance.gameId
+    this.game = GameManager.newGame(gameRuleName)
+    this.gamerule = new GameruleFacade() //TODO implement this
   }
 
+  registerGamer(player: PlayerFacade) {
+    this.game.registerGamer(player.player)
+  }
 
   static fromObject(obj: any): GameFacade {
     const game = new GameFacade()

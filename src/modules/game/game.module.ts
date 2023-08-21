@@ -7,7 +7,7 @@ import { GameConsumer } from './game.consumer';
 import { BotModule } from '../bot/bot.module';
 import { GameruleModule } from '../gamerule/gamerule.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { Bot } from '../bot/entities/bot.entity';
+import { BotConfig } from '../bot/entities/bot.entity';
 import { GameruleFacade } from '../gamerule/entities/gameruleFacade.entity';
 
 @Module({
@@ -15,7 +15,7 @@ import { GameruleFacade } from '../gamerule/entities/gameruleFacade.entity';
     BullModule.registerQueue({
       name: 'game',
     }),
-    TypeOrmModule.forFeature([Bot, GameruleFacade]),
+    TypeOrmModule.forFeature([BotConfig, GameruleFacade]),
   ],
   controllers: [GameController],
   providers: [GameService, GameConsumer],

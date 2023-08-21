@@ -2,11 +2,11 @@ import { Module } from '@nestjs/common';
 import { BotService } from './bot.service';
 import { BotController } from './bot.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { Bot } from './entities/bot.entity';
+import { BotConfig } from './entities/bot.entity';
 
 @Module({
   imports:[
-    TypeOrmModule.forFeature([Bot])
+    TypeOrmModule.forFeature([BotConfig])
   ],
   controllers: [BotController],
   providers: [BotService],
