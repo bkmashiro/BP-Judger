@@ -98,7 +98,7 @@ export function ifUndefinedThenAssign(obj: any, key: string, value: any) {
   }
 }
 
-export function createCodeFingerprint(code: Code) {
+export function createCodeFingerprint(code:Pick<Code, 'src' | 'lang' | 'version'>) {
   return createHash('sha256')
     .update(code.src)
     .update(code.lang)

@@ -122,7 +122,6 @@ export class Game extends EventEmitter {
           this.emit('game-ready', this)
           if (config.GAME_AUTO_BEGIN_WHEN_READY) {
             this.setState('running')
-            logger.log(`game ${this.uuid} begin`)
             this.begin()
           }
         }

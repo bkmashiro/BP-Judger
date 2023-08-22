@@ -1,6 +1,6 @@
 import { Processor, Process, OnQueueError, OnQueueFailed } from '@nestjs/bull';
 import { Job } from 'bull';
-import { BotPreparedType, BotType, CreateGameDto_test, HumanType } from './dto/create-game.dto';
+import { BotPreparedType, BotType, CreateGameDto, CreateGameDto_test, HumanType } from './dto/create-game.dto';
 import { BKPileline } from 'src/pipelining/pipelining';
 import { PlayerFacade as PlayerFacade } from '../player/entities/playerFacade.entity';
 import { BotConfig } from '../bot/entities/bot.entity';
@@ -22,7 +22,7 @@ export class GameConsumer {
   ) { }
 
   @Process('game-test')
-  async consume(_job: Job<unknown>) {
+  async game_test(_job: Job<unknown>) {
     const { data } = _job as Job<CreateGameDto_test>
 
     const game = new GameFacade('GameRuleProxy')
@@ -52,6 +52,16 @@ export class GameConsumer {
     }
 
     return 'done';
+  }
+
+  @Process('game')
+  async game(_job: Job<unknown>) {
+    const { data } = _job as Job<CreateGameDto>
+    const game = new GameFacade('GameRuleProxy')
+    
+
+
+
   }
 
   @OnQueueFailed()

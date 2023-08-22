@@ -93,7 +93,6 @@ async function prepare_code(code: Code): Promise<string> {
   const code_fingerprint = createCodeFingerprint(code)
   if (await FileCache.instance.has(code_fingerprint)) { // if cached, skip compile
     const codeOutPath = await FileCache.instance.get(code_fingerprint)
-    // console.log(`Code ${code_fingerprint} hit cache ${codeOutPath}`)
     return codeOutPath
   }
 

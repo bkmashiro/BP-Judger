@@ -8,6 +8,8 @@ import { Logger } from "@nestjs/common"
 import * as chalk from 'chalk'
 import { Job } from "./pipelining.decl"
 import { NsJail } from "src/jail/NsjailRush"
+import { CompileStrategy } from "src/executables/executables"
+import { error } from "console"
 
 const logger = new Logger('Pilelining');
 
@@ -22,19 +24,22 @@ export class BKPileline {
   onSuccess = 'next'
   onFailure = 'stop'
 
-  constructor(config_path: string | object) {
-    if (typeof config_path === 'object') {
-      this.config = config_path
+  constructor(cfg: string | { jobs: Job[] }) {
+    if (typeof cfg === 'object') {
+      this.config = cfg
     } else {
-      this.config = JSON.parse(fs.readFileSync(config_path, 'utf8'))
+      this.config = JSON.parse(fs.readFileSync(cfg, 'utf8'))
     }
     this.context = Object.assign(this.context, recursive_render_obj(this.config['constants'], this.context))
   }
 
-  async run(ignore_timeout = false): Promise<object[]> {
+  async run(ctx : {[key: string]: string} = undefined, ignore_timeout = false): Promise<object[]> {
+    if (ctx) {
+      this.ctx(ctx)
+    }
     // if has timeout, run with timeout
     if (!ignore_timeout && this.timeout_ms != 0) {
-      return timeout(this.run(true), this.timeout_ms)
+      return timeout(this.run(ctx, true), this.timeout_ms)
     }
 
     const { jobs } = this.initRun()
@@ -97,11 +102,18 @@ export class BKPileline {
     return this
   }
 
-  public static fromConfig(config: object) {
+  public static fromConfig(config: { jobs: Job[] }) {
     return new BKPileline(config)
   }
 
   public static fromJobs(...jobs: Job[]) {
+    return new BKPileline({
+      jobs: jobs
+    })
+  }
+
+  public static fromJobAbbrs(jobabbrs: CompileStrategy.JobAbbr[]) {
+    const jobs = jobabbrs.map(jobabbr => JobAbbrToJob(jobabbr))
     return new BKPileline({
       jobs: jobs
     })
@@ -125,6 +137,34 @@ function formatJob(job: Job) {
   ifUndefinedThenAssign(job, 'name', '<Anonymous>')
 }
 
+function JobAbbrToJob(jobAbbr: CompileStrategy.JobAbbr): Job {
+  const { file_no_limit, memory_limit_kb, mount, mount_ro, mount_tmp, netns, time_limit_ms, use_jail } = jobAbbr
+  if ('require' in jobAbbr) {
+    const { require, with: _with } = jobAbbr
+    return require_procedure(require).with(_with).compile()
+  } else if ('use' in jobAbbr) {
+    const { use, with: _with } = jobAbbr
+    return require_procedure(use).with(_with).compile()
+  } else if ('run' in jobAbbr) {
+    const { run } = jobAbbr
+    const jail = use_jail
+      ? {
+        file_no_limit,
+        mem_max: memory_limit_kb,
+        mount,
+        mount_readonly: mount_ro,
+        mount_tmpfs: mount_tmp,
+        timeout: time_limit_ms,
+      }
+      : undefined;
+    return {
+      name: `<Anonymous>`,
+      run,
+      jail
+    }
+  } else throw new error(`Invalid job abbr `, jobAbbr)
+}
+
 export function require_procedure(procedure_name: string): ProcedurePiece {
   const procedure_path = path.resolve(config.configs_path, `./procedures/${procedure_name}.json`)
   if (!fs.promises.access(procedure_path)) {
@@ -133,7 +173,7 @@ export function require_procedure(procedure_name: string): ProcedurePiece {
   return new ProcedurePiece(JSON.parse(fs.readFileSync(procedure_path, 'utf8')))
 }
 
-export function require_config(config_name: string): object {
+export function require_config(config_name: string): {jobs: Job[]} {
   const config_path = path.resolve(config.configs_path, `./predefined/${config_name}.json`)
   if (!fs.promises.access(config_path)) {
     throw new Error(`Config ${config_name} not found`)
@@ -189,7 +229,7 @@ class PlainSystemCommandHandler implements ICommandHandler {
 
 class NSJailCommandHandler implements ICommandHandler {
   handle(inner: string, context: { [key: string]: any }): string {
-    if(!context.hasOwnProperty('jail')) {
+    if (!context.hasOwnProperty('jail')) {
       return inner
     }
     if (context.netns) {
@@ -205,7 +245,7 @@ class NSJailCommandHandler implements ICommandHandler {
 
 class NetnsCommandHandler implements ICommandHandler {
   handle(inner: string, context: { [key: string]: any }): string {
-    if(!context.hasOwnProperty('netns')) {
+    if (!context.hasOwnProperty('netns')) {
       return inner
     }
     return `/usr/sbin/ip netns exec ${context.netns} ${inner}`
@@ -250,14 +290,14 @@ export class JobExecutor {
     return ret
   }
 
-  static filters : ICommandHandler[] = [
+  static filters: ICommandHandler[] = [
     new PlainSystemCommandHandler(),
     new NSJailCommandHandler(),
     new NetnsCommandHandler(),
   ]
-  
-  assemble_command(command: string, args: string[]) : string { //TODO: refactor this, use interceptors
-    let ctx : {[key: string]: any} = Object.assign({
+
+  assemble_command(command: string, args: string[]): string { //TODO: refactor this, use interceptors
+    let ctx: { [key: string]: any } = Object.assign({
       command,
       args
     }, this.job, this.context)
