@@ -55,8 +55,8 @@ int main() {
     await this.botRepository.save(bot)
   }
 
-  findAll() {
-    return `This action returns all bot`;
+  async findAll() {
+    return await this.botRepository.find()
   }
 
   findOne(id: number) {

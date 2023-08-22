@@ -2,7 +2,7 @@
 import { Code } from "src/modules/player/entities/playerFacade.entity"
 import { Column, Entity, Index, PrimaryColumn, PrimaryGeneratedColumn } from "typeorm"
 
-@Entity()
+@Entity('bot')
 export class BotConfig {
   @PrimaryGeneratedColumn()
   id: number

@@ -21,10 +21,11 @@ export class GameFacade {
   constructor(gameRuleName: GameRuleName = 'GameRuleProxy') {
     this.game = GameManager.newGame(gameRuleName)
     this.gamerule = new GameruleFacade() //TODO implement this
+
   }
 
-  registerGamer(player: PlayerFacade) {
-    this.game.registerGamer(player.player)
+  registerPlayer(player: PlayerFacade) {
+    this.game.registerPlayer(player.player)
   }
 
   static fromObject(obj: any): GameFacade {

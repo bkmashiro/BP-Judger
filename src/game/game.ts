@@ -36,16 +36,21 @@ export class GameManager {
     }
 
     const gameId = GameManager.newGameID()
-    
-    const game = new Game(gameId, GameRuleManager.instantiate(gameruleName))
+    const gameRule = GameRuleManager.instantiate(gameruleName, gameId)
+    const game = new Game(gameId, gameRule)
+    console.log(`Game ${gameId} created`)
     GameManager.activeGames[gameId] = game
     return game
   }
 
-  static newGameID() {
+  static newGameID() : GameID {
     return "ac856d20-4e9c-409f-b1b3-d2d41a1df9a0"
     // return randomUUID()
   }
+
+  static hasGame(gameId: GameID) { return GameManager.activeGames.hasOwnProperty(gameId) }
+
+  static getGame(gameId: GameID) { return GameManager.activeGames[gameId] }
 }
 
 export class GameRuleManager {
@@ -55,12 +60,15 @@ export class GameRuleManager {
     return GameRuleManager.gameRules[gameRuleName]
   }
 
-  static instantiate(gameRuleName: GameRuleName) {
+  static instantiate(gameRuleName: GameRuleName, bindTo: GameID) : GameRuleBase {
     const gameRule = GameRuleManager.get(gameRuleName)
+    if (!gameRule) {
+      throw new Error(`GameRule ${gameRuleName} not found`)
+    }
     let gamerule = null
 
     if (gameRule instanceof GameRuleFactory) {
-      gamerule = gameRule.newGameRuleProxy()
+      gamerule = gameRule.newGameRule()
     } else {
       gamerule = new gameRule()
     }
@@ -68,9 +76,7 @@ export class GameRuleManager {
     return gamerule
   }
 
-  static hasGame(gameId: GameID) { return GameManager.activeGames.hasOwnProperty(gameId) }
 
-  static getGame(gameId: GameID) { return GameManager.activeGames[gameId] }
 
   static registerGameRule(gameName: GameRuleName, gameRule: IGameRuleConstructor | GameRuleFactory) {
     GameRuleManager.gameRules[gameName] = gameRule
@@ -170,7 +176,7 @@ export class Game extends EventEmitter {
     this.gameoverCb && this.gameoverCb(this.game_ctx)
   }
 
-  registerGamer(gamer: PlayerBase) {
+  registerPlayer(gamer: PlayerBase) {
     this.players[gamer.uuid] = gamer
     // console.log(`player ${gamer.uuid} registered and waiting`)
     this.emit('player-registered', gamer)

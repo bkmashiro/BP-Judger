@@ -244,9 +244,9 @@ export class JobExecutor {
     const args = command.split(' ')
     command = args.shift()
     const assembled = this.assemble_command(command, args)
-    ifTrueThenDo(this.job.verbose, () => console.log(`@assembled:`, assembled))
+    ifTrueThenDo(this.job.verbose, () => console.log(`# ${this.name}.cmd = \n`, assembled))
     const ret = await runCommand(assembled)
-    ifTrueThenDo(this.job.verbose, () => console.log(`@returing:`, ret))
+    ifTrueThenDo(this.job.verbose, () => console.log(`# ${this.name}.ret = \n`, ret))
     return ret
   }
 
@@ -281,7 +281,7 @@ export class JobExecutor {
   }
 
   public get name(): string {
-    return this.job['name']
+    return this.job.name
   }
 
   public inject(ctx: { [x: string]: any; }) {

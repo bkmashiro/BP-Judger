@@ -2,8 +2,8 @@ import { JSONMessage } from "./rg-grpc/ts/jsonmsg"
 import { randomUUID } from "crypto";
 import * as grpc from '@grpc/grpc-js';
 import { EventEmitter } from "events";
-import { GameRuleProxyManager } from "./GameRuleProxy";
 import { GameID, PlayerID } from "../../../game/players/IPlayer";
+import { GameRuleProxyManager } from "../GameRuleProxyManager";
 export type RgSectionId = GameID | PlayerID
 export type RgData = {
   id: RgSectionId,

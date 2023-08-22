@@ -19,9 +19,8 @@ export class PlayerFacade {
   name: string
   tags: string[]
   code?: Code
-  proxy?: PlayerProxy
   player: PlayerBase
-  
+
 
   static fromObject(player: CreatePlayerDto): PlayerFacade {
     const newPlayer = new PlayerFacade()
@@ -29,12 +28,12 @@ export class PlayerFacade {
     throw new Error("Method not implemented.");
     return newPlayer
   }
-  
-  static get(type : 'proxied' |'human', config: BotConfig) {
+
+  static new(type: 'proxied' | 'human', config: BotConfig) {
     const player = new PlayerFacade()
     if (type === 'proxied') {
       player.type = PlayerFacadeType.PROXY
-      player.proxy = PlayerProxyManager.instance.newPlayer()
+      player.player = PlayerProxyManager.instance.newPlayer()
       player.name = config.name
       player.tags = config.tags
       player.code = config.code
@@ -43,31 +42,27 @@ export class PlayerFacade {
     } else {
       throw new Error('Unknown player type')
     }
-    
+
     return player
   }
 
-  
-  public get id() : string {
-    if (this.type === PlayerFacadeType.PROXY) {
-      return this.proxy.uuid
-    }
 
-    throw new Error('Unknown player type')
+  public get id(): string {
+    return this.player.uuid
   }
-  
 
-  
+
+
   async prepare(): Promise<PreparedPlayerType> {
     const startegy = prepare_strategy[this.type]
-    if (startegy) { 
+    if (startegy) {
       return await startegy.call(this, this)
-    } 
+    }
     throw new Error('Unknown player type or strategy not implemented')
   }
 }
 
-async function prepare_proxy_player({ code }: PlayerFacade) :Promise<PreparedPlayerType> {
+async function prepare_proxy_player({ code }: PlayerFacade): Promise<PreparedPlayerType> {
   // 1. prepare code file
   // 2. compile (if needed)
   const executable = await prepare_code(code)
@@ -92,9 +87,9 @@ const prepare_strategy = {
 }
 
 
-async function prepare_code(code :Code) :Promise<string> {
+async function prepare_code(code: Code): Promise<string> {
   if (!code) throw new Error('Code not found')
-  
+
   const code_fingerprint = createCodeFingerprint(code)
   if (await FileCache.instance.has(code_fingerprint)) { // if cached, skip compile
     const codeOutPath = await FileCache.instance.get(code_fingerprint)

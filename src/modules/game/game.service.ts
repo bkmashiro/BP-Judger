@@ -4,13 +4,13 @@ import { UpdateGameDto } from './dto/update-game.dto';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
 import { GameManager, GameRuleManager } from 'src/game/game';
-import { GameRuleProxyManager } from 'src/game/gamerules/gameruleProxy/GameRuleProxy';
 import { PlayerManager } from 'src/game/players/PlayerFactory';
 import { PlayerProxyManager } from 'src/game/players/playerProxy/playerProxy';
 import { BKPileline } from 'src/pipelining/pipelining';
 import { PlayerModule } from 'src/pipelining/modules/playerModule/playerModule';
 import { CompileModule } from 'src/pipelining/modules/CompileModule/compileModule';
 import { FileCahceModule } from 'src/pipelining/modules/FileCacheModule/fileCacheModule';
+import { GameRuleProxyManager } from 'src/game/gamerules/GameRuleProxyManager';
 
 @Injectable()
 export class GameService {

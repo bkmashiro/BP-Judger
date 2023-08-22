@@ -54,7 +54,9 @@ export class PlayerProxyManager extends PlayerFactory {
 
   newPlayer(): PlayerProxy {
     const proxy_player = new PlayerProxy(PlayerManager.newplayerID())
+    console.log(`PlayerProxyManager.newPlayer called`)
     PlayerProxyManager.active_proxies.set(proxy_player.uuid, proxy_player)
+    console.log(`PlayerProxy ${proxy_player.uuid} set `)
     return proxy_player
   }
 

@@ -28,11 +28,11 @@ export class GameConsumer {
   async consume(_job: Job<unknown>) {
     const job = _job as Job<CreateGameDto_test>
     const { data } = job;
-    let progress = 0;
+    
     // setup
     // setup game
     const game = new GameFacade('GameRuleProxy')
-    const gameRuleInstanceUUID = game.uuid
+
     const players = data.players
     //preparing
 
@@ -49,26 +49,27 @@ export class GameConsumer {
     // prepare player proxies
     const bot_players = players.filter(player => player.type === 'bot') as BotType[]
     const human_players = players.filter(player => player.type === 'human') as HumanType[]
-    // console.log(bot_players)
+
     for (const bot_player of bot_players) {
       const botPlayerConfig = await this.botRepository.findOne({ where: { id: bot_player.botId } }) // TODO: need to use this config to get bot
-      const { memory_limit } = await this.gameruleRepository.findOne({ where: { id: gameRuleId } }) // TODO: need to use this config to get bot
-      const player = PlayerFacade.get('proxied', botPlayerConfig)
+      const gamerule = await this.gameruleRepository.findOneOrFail({ where: { id: gameRuleId } }) // TODO: need to use this config to get bot
+      const  { memory_limit } =  gamerule
+
+      const player = PlayerFacade.new('proxied', botPlayerConfig)
       // register players to game
       // TODO: clean this
-      game.registerGamer(player)
+      game.registerPlayer(player)
+      
       prepareBotPlayer(player)
     }
 
-
-    // console.log(`Job ${_job.id} is running`)
     return 'done';
   }
 }
 
 async function prepareBotPlayer(bot_player_inst: PlayerFacade) {
   const { execPath } = await bot_player_inst.prepare() as BotPreparedType
-  // console.log(`Player ${bot_player_inst.id} prepared at ${execPath}`)
+  console.log(`Player ${bot_player_inst.id} prepared at ${execPath}`)
   const exec_pipeline = new BKPileline({
     jobs: [
       {
