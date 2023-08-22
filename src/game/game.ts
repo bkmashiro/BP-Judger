@@ -136,6 +136,7 @@ export class Game extends EventEmitter {
     await this.gameRule.init_game(this.match_ctx)
     this.emit('game-begin', this)
     this.gamebeginCb && this.gamebeginCb(this)
+    logger.debug(`game ${this.uuid} begin`)
     let turn = 0
     let gameNotOver = true
     while (gameNotOver) {
@@ -174,6 +175,7 @@ export class Game extends EventEmitter {
     this.setState('gameover')
     this.emit('gameover', this.game_ctx)
     this.gameoverCb && this.gameoverCb(this.game_ctx)
+    logger.debug(`game ${this.uuid} over`)
   }
 
   registerPlayer(gamer: PlayerBase) {

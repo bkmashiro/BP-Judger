@@ -1,18 +1,15 @@
-import { Processor, Process } from '@nestjs/bull';
+import { Processor, Process, OnQueueError, OnQueueFailed } from '@nestjs/bull';
 import { Job } from 'bull';
 import { BotPreparedType, BotType, CreateGameDto_test, HumanType } from './dto/create-game.dto';
-import { GameManager } from 'src/game/game';
-import { GameRuleProxy } from 'src/game/gamerules/gameruleProxy/GameRuleProxy';
 import { BKPileline } from 'src/pipelining/pipelining';
 import { PlayerFacade as PlayerFacade } from '../player/entities/playerFacade.entity';
-import { Inject } from '@nestjs/common';
 import { BotConfig } from '../bot/entities/bot.entity';
 import { Repository } from 'typeorm';
 import { GameruleFacade } from '../gamerule/entities/gameruleFacade.entity';
 import { NsJailConfig } from 'src/jail/NsjailRush';
 import { InjectRepository } from '@nestjs/typeorm';
-import { PlayerProxyManager } from 'src/game/players/playerProxy/playerProxy';
 import { GameFacade } from './entities/gameFacade.entity';
+import { Logger } from '@nestjs/common';
 
 @Processor('game')
 export class GameConsumer {
@@ -24,46 +21,42 @@ export class GameConsumer {
     private readonly gameruleRepository: Repository<GameruleFacade>,
   ) { }
 
-  @Process('game')
+  @Process('game-test')
   async consume(_job: Job<unknown>) {
-    const job = _job as Job<CreateGameDto_test>
-    const { data } = job;
-    
-    // setup
-    // setup game
+    const { data } = _job as Job<CreateGameDto_test>
+
     const game = new GameFacade('GameRuleProxy')
-
-    const players = data.players
-    //preparing
-
-    // prepare gamerule proxy
-    const gameRuleId = data.gameruleId //TODO: need to use this id to get gamerule
+    const gameRuleId = data.gameruleId            //TODO: need to use this id to get gamerule
     const gamerulePipeline = BKPileline.fromJobs(
-        {
-          name: 'run_test_gamerule',
-          run: '/usr/local/bin/ts-node ${@src}/game/gamerules/gameruleProxy/gamerule.test.ts',
-        }
+      {
+        name: 'run_test_gamerule',
+        run: '/usr/local/bin/ts-node ${@src}/game/gamerules/gameruleProxy/gamerule.test.ts',
+      }
     ).setTimeout(20000);
     gamerulePipeline.run() // Not to wait for the result
 
     // prepare player proxies
-    const bot_players = players.filter(player => player.type === 'bot') as BotType[]
-    const human_players = players.filter(player => player.type === 'human') as HumanType[]
+    const bot_players =  data.players.filter(player => player.type === 'bot') as BotType[]
+    const human_players =  data.players.filter(player => player.type === 'human') as HumanType[]
 
     for (const bot_player of bot_players) {
-      const botPlayerConfig = await this.botRepository.findOne({ where: { id: bot_player.botId } }) // TODO: need to use this config to get bot
-      const gamerule = await this.gameruleRepository.findOneOrFail({ where: { id: gameRuleId } }) // TODO: need to use this config to get bot
-      const  { memory_limit } =  gamerule
+      const botPlayerConfig = await this.botRepository.findOneOrFail({ where: { id: bot_player.botId } }) // TODO: need to use this config to get bot
+      const gamerule = await this.gameruleRepository.findOneOrFail({ where: { id: gameRuleId } })         // TODO: need to use this config to get bot
+      const { memory_limit } = gamerule
+
 
       const player = PlayerFacade.new('proxied', botPlayerConfig)
-      // register players to game
-      // TODO: clean this
       game.registerPlayer(player)
-      
+
       prepareBotPlayer(player)
     }
 
     return 'done';
+  }
+
+  @OnQueueFailed()
+  onError(job, error: Error) {
+    Logger.error(`in job ${job.id}` ,error)
   }
 }
 

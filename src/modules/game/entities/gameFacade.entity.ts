@@ -1,9 +1,7 @@
 import { IPlayerFacade, PlayerFacade } from "../../player/entities/playerFacade.entity"
 import { GameruleFacade } from "../../gamerule/entities/gameruleFacade.entity"
 import { Gameover } from "./gameover.entity"
-import { Entity } from "typeorm"
 import { Game, GameManager } from "src/game/game"
-import { GameRuleProxy } from "src/game/gamerules/gameruleProxy/GameRuleProxy"
 import { GameRuleName } from "src/game/players/IPlayer"
 
 
@@ -21,7 +19,6 @@ export class GameFacade {
   constructor(gameRuleName: GameRuleName = 'GameRuleProxy') {
     this.game = GameManager.newGame(gameRuleName)
     this.gamerule = new GameruleFacade() //TODO implement this
-
   }
 
   registerPlayer(player: PlayerFacade) {

@@ -1,7 +1,6 @@
 import { Column, Entity, PrimaryGeneratedColumn } from "typeorm"
 
 export type GameruleID = string
-
 @Entity()
 export class GameruleFacade {
   @PrimaryGeneratedColumn()

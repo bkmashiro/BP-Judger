@@ -26,7 +26,7 @@ export class GameService {
   }
 
   async create_test(createGameDto: CreateGameDto_test) {
-    const job = await this.gameQueue.add('game', createGameDto);
+    const job = await this.gameQueue.add('game-test', createGameDto);
     // console.log(job.id)
   }
 
