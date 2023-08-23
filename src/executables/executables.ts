@@ -7,7 +7,7 @@ import * as fs from 'fs'
 import { config } from "src/configs/config";
 import { BKPileline } from "src/pipelining/pipelining";
 
-namespace Executables {
+export namespace Executables {
   export async function prepare(exec: Executable) {
     const { source } = exec
     if (!source) throw new Error('Code not found')
@@ -20,33 +20,45 @@ namespace Executables {
 
     if (await FileCache.instance.has(code_fingerprint)) { // if cached, skip compile
       const codeOutPath = await FileCache.instance.get(code_fingerprint)
+      console.log(`Code ${code_fingerprint} found in cache`)
       return codeOutPath
     }
 
     // prepare files, dirs ( src file, and a temp dir)
-    const { basePath, codePath, codeOutPath } = await prepareFs(code_fingerprint, source);
+    const { basePath, codePath } = await prepareFs(code_fingerprint, source);
 
     const ctx = {
-      '@src': basePath, '@input': codePath, '@output': codeOutPath, '@cwd': basePath
+      '@input': codePath, 'cwd': basePath, 'INPUT_BOT_FILE_NAME': `src`
     }
 
     const pipeline = CompileStrategy.getPipeline(exec.config.lang, exec.config.version)
-
-    await BKPileline.fromJobAbbrs(pipeline).ctx(ctx).run()
+    let pipe: BKPileline
+    try{
+      pipe = BKPileline.fromJobAbbrs(pipeline).ctx(ctx) //this pipeline has only one job
+      await pipe.run()
+    } catch (e) {
+      console.log(`Error when compiling code ${code_fingerprint}`, e)
+      throw e
+    }
+    const codeOutPath = pipe.getRet('compile').expect_output
+    // cache
+    await FileCache.instance.set(code_fingerprint, codeOutPath)
     // TODO implement this
+    return codeOutPath 
+    // TODO  this is not correct, some language may not have this output
+    // May create another module to notifiy the pipeline the infos.
   }
 
   async function prepareFs(code_fingerprint: string, source: string) {
     const basePath = path.resolve(path.join(config.CODE_FILE_TEMP_DIR, code_fingerprint));
     const codePath = path.resolve(path.join(basePath, `src`));
-    const codeOutPath = path.resolve(path.join(basePath, `/build/out`));
     await new FileHelper()
       .push('mkdir', basePath)
       .push('write', codePath, source)
       .push('chown', codePath, config.uid, config.gid)
       .push('chgrp', codePath, config.uid, config.gid)
       .run();
-    return { basePath, codePath, codeOutPath };
+    return { basePath, codePath };
   }
 }
 
@@ -66,7 +78,7 @@ namespace Executables {
  * the output of the job will be stored in `<job_name>.__ret__`
  */
 export namespace CompileStrategy {
-  type limitations = {
+  export type limitations = {
     memory_limit_kb: number;
     time_limit_ms: number;
     
@@ -89,28 +101,30 @@ export namespace CompileStrategy {
   } |
   {
     run: string;
-  }) & Partial<limitations> & Partial<JailAbbr>
+  }) & Partial<limitations> & Partial<JailAbbr> & {
+    name?: string
+  }
 
 
   type LangOption = {
     [lang: string]: JobAbbr[]
   }
-  const C = {}
+  const c = {}
 
-  const Cpp: LangOption = {
-    '14-grpc': [
+  const cpp: LangOption = {
+    'cpp14-grpc': [
       {
         require: 'c++14_grpc_player_compile',
         with: {
-          in_file_name: '@input',
-          out_file_name: '@output',
+          in_file_name: '${@input}',
+          out_file_name: '${@output}',
         }
       }
     ]
   }
 
   export const langs: { [langName: string]: LangOption } = {
-    C, Cpp
+    c, cpp
   }
 
 

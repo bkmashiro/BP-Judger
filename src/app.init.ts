@@ -1,7 +1,8 @@
 import * as fs from 'fs'
 import { runCommand } from './pipelining/executors/commandExecutor'
+import { FileHelper } from './utils'
 
-export default function Init() {
+export default async function Init() {
   // check if root
   if (process.getuid() !== 0 || process.getgid() !== 0) {
     console.error('Please run as root')
@@ -16,7 +17,7 @@ export default function Init() {
     '/sys/fs/cgroup/memory/NSJAIL',
     '/sys/fs/cgroup/cpu,cpuacct/NSJAIL',
     '/tmp/code',
-    '/tmp/ccache_cache'
+    '/tmp/ccache'
   ]
 
   try {
@@ -27,6 +28,14 @@ export default function Init() {
     console.error(e)
     throw Error('Init failed: make dir failed')
   }
+
+  await new FileHelper()
+  .push('chown', '/tmp/code', 1919, 1919)
+  .push('chgrp', '/tmp/code', 1919, 1919)
+  .push('chown', '/tmp/ccache', 1919, 1919)
+  .push('chgrp', '/tmp/ccache', 1919, 1919)
+  .run()
+
 }
 
 function makeDirIfNotExist(dir: string) {

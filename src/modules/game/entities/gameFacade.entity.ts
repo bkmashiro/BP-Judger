@@ -25,6 +25,12 @@ export class GameFacade {
     this.game.registerPlayer(player.player)
   }
 
+  registerPlayers(players: PlayerFacade[]) {
+    for (const player of players) {
+      this.registerPlayer(player)
+    }
+  }
+
   static fromObject(obj: any): GameFacade {
     const game = new GameFacade()
     game.uuid = obj.uuid

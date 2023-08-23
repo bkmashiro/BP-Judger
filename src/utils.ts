@@ -21,6 +21,7 @@ export function check_required_variables(required_vars, context) {
   }
   for (const variable of required_vars) {
     if (!context.hasOwnProperty(variable)) {
+      console.log(`Required variable ${variable} not found in context, context: `, context)
       throw new Error(`Variable ${variable} not found in context`)
     }
   }

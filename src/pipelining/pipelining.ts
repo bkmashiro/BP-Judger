@@ -13,16 +13,21 @@ import { error } from "console"
 
 const logger = new Logger('Pilelining');
 
-
+export interface Context {
+  '@src': string;
+  'cwd'?: string;
+  [key: string]: string | undefined;
+}
 
 export class BKPileline {
   config: object
-  context: object = { // The following are predefined variables
+  context: Context = { // The following are predefined variables
     "@src": config.src_path,
   }
   timeout_ms: number = 0
   onSuccess = 'next'
   onFailure = 'stop'
+  ret?: object
 
   constructor(cfg: string | { jobs: Job[] }) {
     if (typeof cfg === 'object') {
@@ -33,27 +38,30 @@ export class BKPileline {
     this.context = Object.assign(this.context, recursive_render_obj(this.config['constants'], this.context))
   }
 
-  async run(ctx : {[key: string]: string} = undefined, ignore_timeout = false): Promise<object[]> {
+  async run(ctx : {[key: string]: string} = undefined, ignore_timeout = false): Promise<object> {
     if (ctx) {
       this.ctx(ctx)
     }
+    // console.log(`ctx is`,this.context)
     // if has timeout, run with timeout
     if (!ignore_timeout && this.timeout_ms != 0) {
       return timeout(this.run(ctx, true), this.timeout_ms)
     }
-
+    
     const { jobs } = this.initRun()
-    const rets = []
-
+    // console.log(`jobs are`, jobs)
+    const rets = {}
+    let job_cnt = 0
     for (const job of jobs) {
       formatJob(job)
-
+      job_cnt++
+      ifUndefinedThenAssign(job, 'name', 'job_' + job_cnt.toString())
       const executor = new JobExecutor(job, this.context)
 
       try {
-        logger.log(`Running job ${job.name}`)
+        logger.log(`Running job ${job.name} in pileline ${this.config['name'] ?? '<Anonymous>'}`)
         const [ret, duration] = await timed(() => executor.run())
-        rets.push(ret)
+        rets[job.name] = ret
         logger.log(`${chalk.white('Job')} ${chalk.blueBright(job.name)} finished \t +${chalk.yellow(duration.toString(), 'ms')}`)
         this.updateCtx(ret, job)
         this.conditional(this.onSuccess)
@@ -63,7 +71,7 @@ export class BKPileline {
         throw err //by default, if a job failed, the whole pipeline failed
       }
     }
-
+    this.ret = rets
     return rets
   }
 
@@ -71,6 +79,7 @@ export class BKPileline {
     this.onSuccess = this.config['onSuccess'] ?? 'next'
     this.onFailure = this.config['onFailure'] ?? 'stop'
     const jobs = this.config['jobs']
+    //TODO need to check duplicate job names
     return { jobs }
   }
 
@@ -112,11 +121,25 @@ export class BKPileline {
     })
   }
 
+  getJobByName(name: string) {
+    const jobs = this.config['jobs']
+    for (const job of jobs) {
+      if (job.name === name) {
+        return job
+      }
+    }
+    return null
+  }
+
   public static fromJobAbbrs(jobabbrs: CompileStrategy.JobAbbr[]) {
     const jobs = jobabbrs.map(jobabbr => JobAbbrToJob(jobabbr))
     return new BKPileline({
       jobs: jobs
     })
+  }
+
+  getRet(name) {
+    return this.ret[name]
   }
 
   static predefined(pipelineName: string) {
@@ -134,17 +157,22 @@ export class BKPileline {
 }
 
 function formatJob(job: Job) {
-  ifUndefinedThenAssign(job, 'name', '<Anonymous>')
+  // ifUndefinedThenAssign(job, 'name', '<Anonymous>')
 }
 
 function JobAbbrToJob(jobAbbr: CompileStrategy.JobAbbr): Job {
-  const { file_no_limit, memory_limit_kb, mount, mount_ro, mount_tmp, netns, time_limit_ms, use_jail } = jobAbbr
+  const { file_no_limit, memory_limit_kb, mount, mount_ro, mount_tmp, netns, time_limit_ms, use_jail, name } = jobAbbr //TODO: impl this
+  const mergeNetns = (job : Job) => { //TODO refactor this
+    if (!netns) return job
+    job.netns = netns
+    return job
+  }
   if ('require' in jobAbbr) {
     const { require, with: _with } = jobAbbr
-    return require_procedure(require).with(_with).compile()
+    return mergeNetns(require_procedure(require).asRaw())
   } else if ('use' in jobAbbr) {
     const { use, with: _with } = jobAbbr
-    return require_procedure(use).with(_with).compile()
+    return mergeNetns(require_procedure(use).asRaw())
   } else if ('run' in jobAbbr) {
     const { run } = jobAbbr
     const jail = use_jail
@@ -157,11 +185,11 @@ function JobAbbrToJob(jobAbbr: CompileStrategy.JobAbbr): Job {
         timeout: time_limit_ms,
       }
       : undefined;
-    return {
+    return  mergeNetns({
       name: `<Anonymous>`,
       run,
       jail
-    }
+    })
   } else throw new error(`Invalid job abbr `, jobAbbr)
 }
 
@@ -213,6 +241,10 @@ class ProcedurePiece {
     const jobs = recursive_render_obj(this.raw, ctx)
     return jobs
   }
+
+  asRaw() {
+    return this.raw as Job
+  }
 }
 
 // CoR pattern
@@ -235,6 +267,7 @@ class NSJailCommandHandler implements ICommandHandler {
     if (context.netns) {
       ifUndefinedThenAssign(context.jail, 'disable_clone_newnet', { disable_clone_newnet: true })
     }
+
     const jail = NsJail.asDangling().loadConfig(context.jail)
 
     jail.setCommand(inner)
@@ -304,6 +337,7 @@ export class JobExecutor {
 
     for (const filter of JobExecutor.filters) {
       command = filter.handle(command, ctx)
+      command = render(command, ctx)
     }
     return command
   }

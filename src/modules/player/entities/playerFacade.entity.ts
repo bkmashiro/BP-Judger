@@ -7,34 +7,45 @@ import * as fs from 'fs'
 import { BKPileline, require_procedure } from "../../../pipelining/pipelining";
 import { Logger } from "@nestjs/common";
 import { FileCache } from "src/pipelining/modules/FileCacheModule/fileCacheModule";
-import { PreparedPlayerType } from "src/modules/game/dto/create-game.dto";
+import { CreatePlayerDTO, PreparedPlayerType } from "src/modules/game/dto/create-game.dto";
 import { FileHelper, createCodeFingerprint } from "src/utils";
 import { PlayerBase } from "src/game/players/PlayerBase";
 import { BotConfig } from "src/modules/bot/entities/bot.entity";
+import { Executables } from "src/executables/executables";
 
 export type PlayerFacadeID = string
 const logger = new Logger('PlayerFacade')
 export class PlayerFacade {
   type: PlayerFacadeType
-  name: string
   tags: string[]
   code?: Code
   player: PlayerBase
 
 
-  static fromObject(player: CreatePlayerDto): PlayerFacade {
-    const newPlayer = new PlayerFacade()
-    // TODO
-    throw new Error("Method not implemented.");
-    return newPlayer
+  static fromObject(player: CreatePlayerDTO): PlayerFacade {
+    if (player.type === 'proxy') {
+      return PlayerFacade.new(
+        player.type,
+        {
+          tags: [], //TODO check this
+          code: {
+            lang: player.exec.config.lang,
+            filename: player.exec.config.filename, // this is not used
+            version: player.exec.config.version,
+            src: player.exec.source,
+          }
+        }
+      )
+    } else {
+      throw new Error('Not implemented')
+    }
   }
 
-  static new(type: 'proxied' | 'human', config: BotConfig) {
+  static new(type: 'proxy' | 'human', config: Pick<BotConfig, 'tags' | 'code'>) {
     const player = new PlayerFacade()
-    if (type === 'proxied') {
+    if (type === 'proxy') {
       player.type = PlayerFacadeType.PROXY
       player.player = PlayerProxyManager.instance.newPlayer()
-      player.name = config.name
       player.tags = config.tags
       player.code = config.code
     } else if (type === 'human') {
@@ -46,12 +57,9 @@ export class PlayerFacade {
     return player
   }
 
-
   public get id(): string {
     return this.player.uuid
   }
-
-
 
   async prepare(): Promise<PreparedPlayerType> {
     const startegy = prepare_strategy[this.type]
@@ -62,10 +70,17 @@ export class PlayerFacade {
   }
 }
 
-async function prepare_proxy_player({ code }: PlayerFacade): Promise<PreparedPlayerType> {
+async function prepare_proxy_player_test({ code }: PlayerFacade): Promise<PreparedPlayerType> {
   // 1. prepare code file
   // 2. compile (if needed)
-  const executable = await prepare_code(code)
+  // const executable = await prepare_code(code)
+  const executable = await Executables.prepare({
+    source: code.src,
+    config: {
+      lang: code.lang,
+      version: code.version,
+    }
+  })
 
   return {
     type: 'bot',
@@ -81,9 +96,9 @@ export enum PlayerFacadeType {
 }
 
 const prepare_strategy = {
-  [PlayerFacadeType.PROXY]: prepare_proxy_player,
-  [PlayerFacadeType.HUMAN]: null,
-  [PlayerFacadeType.LOCAL]: null,
+  [PlayerFacadeType.PROXY]: prepare_proxy_player_test,
+  [PlayerFacadeType.HUMAN]: null, //TODO implement this
+  [PlayerFacadeType.LOCAL]: null, //TODO implement this
 }
 
 
@@ -141,7 +156,7 @@ export interface Code {
   lang: string;
   filename: string;
   version: string;
-  tags: string[];
+  // tags: string[];
   src: string;
   pipeline_name?: string;
   [key: string]: any;

@@ -5,7 +5,7 @@ import { GlobalErrorFilter } from './global/filters';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  Init()
+  await Init()
   // app.useGlobalFilters(new GlobalErrorFilter())
   await app.listen(3000);
 }

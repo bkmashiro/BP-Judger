@@ -45,7 +45,7 @@ export class GameConsumer {
       const { memory_limit } = gamerule
 
 
-      const player = PlayerFacade.new('proxied', botPlayerConfig)
+      const player = PlayerFacade.new('proxy', botPlayerConfig)
       game.registerPlayer(player)
 
       prepareBotPlayer(player)
@@ -58,8 +58,10 @@ export class GameConsumer {
   async game(_job: Job<unknown>) {
     const { data } = _job as Job<CreateGameDto>
     const game = new GameFacade('GameRuleProxy')
-    
-
+    const players = data.players.map(player => PlayerFacade.fromObject(player))
+    game.registerPlayers(players)
+    const gamerule = GameruleFacade.fromObject(data.gamerule)
+    await Promise.all([...players.map(player => player.prepare()), gamerule.prepare()])
 
 
   }
