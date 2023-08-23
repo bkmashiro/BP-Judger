@@ -41,3 +41,4 @@ build
 src/configs/predefined/*.json
 *.env
 caches
+.VSCodeCounter
