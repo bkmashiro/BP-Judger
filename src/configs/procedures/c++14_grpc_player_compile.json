@@ -1,6 +1,8 @@
 {
   "use": "compile",
   "with": {
-    "compile_pipeline_name": "cmake_g++_c++14_grpc_player_compile"
-  }
+    "compile_pipeline_name": "cmake_g++_c++14_grpc_player_compile",
+    "expect": "/cmake/build/src"
+  },
+  "name": "compile"
 }

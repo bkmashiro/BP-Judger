@@ -2,20 +2,20 @@ import { Injectable } from '@nestjs/common';
 import { CreateBotDto } from './dto/create-bot.dto';
 import { UpdateBotDto } from './dto/update-bot.dto';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Bot } from './entities/bot.entity';
+import { BotConfig } from './entities/bot.entity';
 import { Repository } from 'typeorm';
 
 @Injectable()
 export class BotService {
 
   constructor(
-    @InjectRepository(Bot) 
-    private botRepository: Repository<Bot>
+    @InjectRepository(BotConfig) 
+    private botRepository: Repository<BotConfig>
   ) {}
 
 
   async create(createBotDto: CreateBotDto) {
-    const bot = new Bot()
+    const bot = new BotConfig()
     bot.name = 'test'
     bot.lang = 'c++'
     bot.code = {
@@ -55,8 +55,8 @@ int main() {
     await this.botRepository.save(bot)
   }
 
-  findAll() {
-    return `This action returns all bot`;
+  async findAll() {
+    return await this.botRepository.find()
   }
 
   findOne(id: number) {

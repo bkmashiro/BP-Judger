@@ -11,6 +11,7 @@ export type Job = JobBase & ({
 export type JobBase = {
   name?: string;
   jail?: NsJailConfig;
+  netns?: string;
   verbose?: boolean;
 };
 

@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { CreatePlayerDto } from './dto/create-player.dto';
 import { UpdatePlayerDto } from './dto/update-player.dto';
-import { PlayerFacade } from './entities/player.entity';
+import { PlayerFacade } from './entities/playerFacade.entity';
 import { version } from 'os';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';

@@ -1,6 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
 
-# set(CMAKE_PREFIX_PATH "/home/shiyuzhe/.local" ${CMAKE_PREFIX_PATH})
 
 project(Player C CXX)
 
@@ -49,7 +48,7 @@ add_custom_command(
 
 # Include generated *.pb.h files
 include_directories("${CMAKE_CURRENT_BINARY_DIR}")
-# include_directories("../../../bot_template/cpp")
+
 
 # Add bot.h and player_proxy_client.h to the source files list
 set(SOURCES

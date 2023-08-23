@@ -1,5 +1,6 @@
-import { GameruleID } from "../../gamerule/entities/gamerule.entity"
-import { PlayerFacadeID } from "../../player/entities/player.entity"
+import { CompileStrategy } from "src/executables/executables"
+import { GameruleID } from "../../gamerule/entities/gameruleFacade.entity"
+import { PlayerFacadeID } from "../../player/entities/playerFacade.entity"
 
 export class CreateGameDto_test {
   gameruleId: number
@@ -35,13 +36,12 @@ export type HumanPreparedType = {
 export type PreparedPlayerType = BotPreparedType | HumanPreparedType
 
 export type ExecutableConfig = { // The detail about how to compile/execute the executable is managed by BP-Judger, not the backend
-  language: string
+  lang: string
   version: string
   [key: string]: any
 }
 
 export type Version = {
-  uuid: string
   major: number
   minor: number
   patch: number
@@ -49,12 +49,12 @@ export type Version = {
 
 export type VersionDescriptor = {
   version: Version
-  sign: ">" | ">=" | "=" | "<=" | "<" 
+  sign: ">" | ">=" | "=" | "<=" | "<"
 }
 
 export type Executable = {
   source: string
-  config: ExecutableConfig 
+  config: ExecutableConfig
 }
 
 export class CreateGameDto {
@@ -65,25 +65,28 @@ export class CreateGameDto {
   }
 }
 
-class CreateGameruleDTO {
-  exec: Executable
-  version: Version
+type StageLimitations = {
+  [stage: string]: CompileStrategy.limitations
 }
 
-// Named/labeled union type
-type CreatePlayerDTO = CreateBotPlayerDTO | CreateHumanPlayerDTO
-
-class CreateBotPlayerDTO {
-  type: 'bot'
+type CreateGameruleDTO = {
   exec: Executable
   version: Version
-  compat:{
+} & StageLimitations
+
+export type CreatePlayerDTO = (CreateBotPlayerDTO | CreateHumanPlayerDTO) & StageLimitations
+
+class CreateBotPlayerDTO {
+  type: 'proxy'
+  exec: Executable
+  version: Version
+  compat: {
     gamerule: string
     versions: VersionDescriptor[]
-  } 
+  }
 }
 
 class CreateHumanPlayerDTO {
   type: 'human'
-  socket: any// TODO implement this
+  socket: any  // TODO implement this
 }

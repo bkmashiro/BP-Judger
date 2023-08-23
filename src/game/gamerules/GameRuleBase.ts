@@ -1,12 +1,14 @@
 import { EventEmitter } from "events"
-import { GameContext, MatchContext } from "../game"
+import { Game, GameContext, MatchContext } from "../game"
 import { IGameRule } from "./IGameRule"
 import { PlayerMove, PlayerMoveWarpper } from "../players/IPlayer"
+
 
 export abstract class GameRuleBase extends EventEmitter implements IGameRule {
   status: GameRuleStatus = "offline" 
   ctx: GameContext
   secret: { [key: string]: any } = {}
+  _parent: Game
 
   abstract validate_game_pre_requirements(ctx: MatchContext): Promise<boolean>
 
@@ -16,6 +18,7 @@ export abstract class GameRuleBase extends EventEmitter implements IGameRule {
 
   abstract accept_move(ctx: MatchContext, moveWarpper: PlayerMove):  Promise<void>
 
+
   /** @deprecated 
    * Never call this yourself
    * DO NOT REMOVE THIS METHOD */ 
@@ -23,7 +26,16 @@ export abstract class GameRuleBase extends EventEmitter implements IGameRule {
     this.ctx = gameContext
   }
 
-  abstract init_game(ctx: MatchContext):  Promise<void>
+  /**
+   * Note that this method wont always be called
+   * but it is guaranteed to be called before any other methods
+   * @param game 
+   */
+  bind_parent(game: Game): void {
+    this._parent = game
+  }
+
+  abstract init_game(ctx: MatchContext): Promise<void>
 
   whenGameover = new Promise<GameContext>((resolve, reject) => {
     this.on('gameover', (gameContext: GameContext) => {

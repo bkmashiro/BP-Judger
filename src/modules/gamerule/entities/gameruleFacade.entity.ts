@@ -1,9 +1,8 @@
 import { Column, Entity, PrimaryGeneratedColumn } from "typeorm"
 
 export type GameruleID = string
-
 @Entity()
-export class GameruleInstance {
+export class GameruleFacade {
   @PrimaryGeneratedColumn()
   id: number
 
@@ -14,7 +13,7 @@ export class GameruleInstance {
   memory_limit: number
 
 
-  static fromObject(gamerule: any): GameruleInstance {
+  static fromObject(gamerule: any): GameruleFacade {
     throw new Error("Method not implemented.");
   }
 

@@ -1,78 +1,80 @@
-import { Processor, Process } from '@nestjs/bull';
+import { Processor, Process, OnQueueError, OnQueueFailed } from '@nestjs/bull';
 import { Job } from 'bull';
-import { BotPreparedType, BotType, CreateGameDto_test, HumanType } from './dto/create-game.dto';
-import { GameManager } from 'src/game/game';
-import { GameRuleProxy } from 'src/game/gamerules/gameruleProxy/GameRuleProxy';
+import { BotPreparedType, BotType, CreateGameDto, CreateGameDto_test, HumanType } from './dto/create-game.dto';
 import { BKPileline } from 'src/pipelining/pipelining';
-import { PlayerFacade as PlayerFacade } from '../player/entities/player.entity';
-import { Inject } from '@nestjs/common';
-import { Bot } from '../bot/entities/bot.entity';
+import { PlayerFacade as PlayerFacade } from '../player/entities/playerFacade.entity';
+import { BotConfig } from '../bot/entities/bot.entity';
 import { Repository } from 'typeorm';
-import { GameruleInstance } from '../gamerule/entities/gamerule.entity';
+import { GameruleFacade } from '../gamerule/entities/gameruleFacade.entity';
 import { NsJailConfig } from 'src/jail/NsjailRush';
 import { InjectRepository } from '@nestjs/typeorm';
-import { PlayerProxyManager } from 'src/game/players/playerProxy/playerProxy';
+import { GameFacade } from './entities/gameFacade.entity';
+import { Logger } from '@nestjs/common';
 
 @Processor('game')
 export class GameConsumer {
 
   constructor(
-    @InjectRepository(Bot)
-    private readonly botRepository: Repository<Bot>,
-    @InjectRepository(GameruleInstance)
-    private readonly gameruleRepository: Repository<GameruleInstance>,
+    @InjectRepository(BotConfig)
+    private readonly botRepository: Repository<BotConfig>,
+    @InjectRepository(GameruleFacade)
+    private readonly gameruleRepository: Repository<GameruleFacade>,
   ) { }
 
-  @Process('game')
-  async consume(_job: Job<unknown>) {
-    const job = _job as Job<CreateGameDto_test>
-    const { data } = job;
-    let progress = 0;
-    // setup
-    // setup game
-    const gameInstance = GameManager.newGame('GameRuleProxy')
-    // set up gamerule
-    const gameRuleInstance = gameInstance.gameRule as GameRuleProxy
-    const gameRuleInstanceUUID = gameRuleInstance.gameId
-    // set up player proxies
-    const players = data.players
-    //preparing
+  @Process('game-test')
+  async game_test(_job: Job<unknown>) {
+    const { data } = _job as Job<CreateGameDto_test>
 
-    // prepare gamerule proxy
-    const gameRuleId = data.gameruleId //TODO: need to use this id to get gamerule
-    const gamerulePipeline = new BKPileline({
-      jobs: [
-        {
-          name: 'run_test_gamerule',
-          run: '/usr/local/bin/ts-node ${@src}/game/gamerules/gameruleProxy/gamerule.test.ts',
-        }
-      ]
-    }).setTimeout(20000);
+    const game = new GameFacade('GameRuleProxy')
+    const gameRuleId = data.gameruleId            //TODO: need to use this id to get gamerule
+    const gamerulePipeline = BKPileline.fromJobs(
+      {
+        name: 'run_test_gamerule',
+        run: '/usr/local/bin/ts-node ${@src}/game/gamerules/gameruleProxy/gamerule.test.ts',
+      }
+    ).setTimeout(20000);
     gamerulePipeline.run() // Not to wait for the result
 
     // prepare player proxies
-    const bot_players = players.filter(player => player.type === 'bot') as BotType[]
-    const human_players = players.filter(player => player.type === 'human') as HumanType[]
-    // console.log(bot_players)
+    const bot_players =  data.players.filter(player => player.type === 'bot') as BotType[]
+    const human_players =  data.players.filter(player => player.type === 'human') as HumanType[]
+
     for (const bot_player of bot_players) {
-      const botPlayerConfig = await this.botRepository.findOne({ where: { id: bot_player.botId } }) // TODO: need to use this config to get bot
-      const { memory_limit } = await this.gameruleRepository.findOne({ where: { id: gameRuleId } }) // TODO: need to use this config to get bot
-      const playerInst = await PlayerFacade.ProxyPlayer(botPlayerConfig.name, botPlayerConfig.tags, botPlayerConfig.code)
-      // register players to game
-      // TODO: clean this
-      gameInstance.registerGamer(playerInst.proxy)
-      prepareBotPlayer(playerInst)
+      const botPlayerConfig = await this.botRepository.findOneOrFail({ where: { id: bot_player.botId } }) // TODO: need to use this config to get bot
+      const gamerule = await this.gameruleRepository.findOneOrFail({ where: { id: gameRuleId } })         // TODO: need to use this config to get bot
+      const { memory_limit } = gamerule
+
+
+      const player = PlayerFacade.new('proxy', botPlayerConfig)
+      game.registerPlayer(player)
+
+      prepareBotPlayer(player)
     }
 
-
-    // console.log(`Job ${_job.id} is running`)
     return 'done';
+  }
+
+  @Process('game')
+  async game(_job: Job<unknown>) {
+    const { data } = _job as Job<CreateGameDto>
+    const game = new GameFacade('GameRuleProxy')
+    const players = data.players.map(player => PlayerFacade.fromObject(player))
+    game.registerPlayers(players)
+    const gamerule = GameruleFacade.fromObject(data.gamerule)
+    await Promise.all([...players.map(player => player.prepare()), gamerule.prepare()])
+
+
+  }
+
+  @OnQueueFailed()
+  onError(job, error: Error) {
+    Logger.error(`in job ${job.id}` ,error)
   }
 }
 
 async function prepareBotPlayer(bot_player_inst: PlayerFacade) {
   const { execPath } = await bot_player_inst.prepare() as BotPreparedType
-  // console.log(`Player ${bot_player_inst.id} prepared at ${execPath}`)
+  console.log(`Player ${bot_player_inst.id} prepared at ${execPath}`)
   const exec_pipeline = new BKPileline({
     jobs: [
       {

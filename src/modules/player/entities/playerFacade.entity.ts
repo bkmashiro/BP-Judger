@@ -7,61 +7,80 @@ import * as fs from 'fs'
 import { BKPileline, require_procedure } from "../../../pipelining/pipelining";
 import { Logger } from "@nestjs/common";
 import { FileCache } from "src/pipelining/modules/FileCacheModule/fileCacheModule";
-import { PreparedPlayerType } from "src/modules/game/dto/create-game.dto";
+import { CreatePlayerDTO, PreparedPlayerType } from "src/modules/game/dto/create-game.dto";
 import { FileHelper, createCodeFingerprint } from "src/utils";
+import { PlayerBase } from "src/game/players/PlayerBase";
+import { BotConfig } from "src/modules/bot/entities/bot.entity";
+import { Executables } from "src/executables/executables";
 
 export type PlayerFacadeID = string
 const logger = new Logger('PlayerFacade')
-export class PlayerFacade implements IPlayerFacade {
+export class PlayerFacade {
   type: PlayerFacadeType
-  name: string
   tags: string[]
   code?: Code
-  proxy?: PlayerProxy
-  
+  player: PlayerBase
 
-  static fromObject(player: CreatePlayerDto): PlayerFacade {
-    const newPlayer = new PlayerFacade()
-    // TODO
-    throw new Error("Method not implemented.");
-    return newPlayer
+
+  static fromObject(player: CreatePlayerDTO): PlayerFacade {
+    if (player.type === 'proxy') {
+      return PlayerFacade.new(
+        player.type,
+        {
+          tags: [], //TODO check this
+          code: {
+            lang: player.exec.config.lang,
+            filename: player.exec.config.filename, // this is not used
+            version: player.exec.config.version,
+            src: player.exec.source,
+          }
+        }
+      )
+    } else {
+      throw new Error('Not implemented')
+    }
   }
-  
 
-  static async ProxyPlayer(name: string, tags: string[], code: Code): Promise<PlayerFacade> {
+  static new(type: 'proxy' | 'human', config: Pick<BotConfig, 'tags' | 'code'>) {
     const player = new PlayerFacade()
-    player.type = PlayerFacadeType.PROXY
-    player.proxy = PlayerProxyManager.instance.newPlayer()
-    player.name = name
-    player.tags = tags
-    player.code = code
+    if (type === 'proxy') {
+      player.type = PlayerFacadeType.PROXY
+      player.player = PlayerProxyManager.instance.newPlayer()
+      player.tags = config.tags
+      player.code = config.code
+    } else if (type === 'human') {
+      throw new Error('Not implemented')
+    } else {
+      throw new Error('Unknown player type')
+    }
+
     return player
   }
 
-  
-  public get id() : string {
-    if (this.type === PlayerFacadeType.PROXY) {
-      return this.proxy.uuid
-    }
-
-    throw new Error('Unknown player type')
+  public get id(): string {
+    return this.player.uuid
   }
-  
 
-  
   async prepare(): Promise<PreparedPlayerType> {
     const startegy = prepare_strategy[this.type]
-    if (startegy) { 
+    if (startegy) {
       return await startegy.call(this, this)
-    } 
+    }
     throw new Error('Unknown player type or strategy not implemented')
   }
 }
 
-async function prepare_proxy_player({ code }: PlayerFacade) :Promise<PreparedPlayerType> {
+async function prepare_proxy_player_test({ code }: PlayerFacade): Promise<PreparedPlayerType> {
   // 1. prepare code file
   // 2. compile (if needed)
-  const executable = await prepare_code(code)
+  // const executable = await prepare_code(code)
+  const executable = await Executables.prepare({
+    source: code.src,
+    config: {
+      lang: code.lang,
+      version: code.version,
+    }
+  })
 
   return {
     type: 'bot',
@@ -77,19 +96,18 @@ export enum PlayerFacadeType {
 }
 
 const prepare_strategy = {
-  [PlayerFacadeType.PROXY]: prepare_proxy_player,
-  [PlayerFacadeType.HUMAN]: null,
-  [PlayerFacadeType.LOCAL]: null,
+  [PlayerFacadeType.PROXY]: prepare_proxy_player_test,
+  [PlayerFacadeType.HUMAN]: null, //TODO implement this
+  [PlayerFacadeType.LOCAL]: null, //TODO implement this
 }
 
 
-async function prepare_code(code :Code) :Promise<string> {
+async function prepare_code(code: Code): Promise<string> {
   if (!code) throw new Error('Code not found')
-  
+
   const code_fingerprint = createCodeFingerprint(code)
   if (await FileCache.instance.has(code_fingerprint)) { // if cached, skip compile
     const codeOutPath = await FileCache.instance.get(code_fingerprint)
-    // console.log(`Code ${code_fingerprint} hit cache ${codeOutPath}`)
     return codeOutPath
   }
 
@@ -138,7 +156,7 @@ export interface Code {
   lang: string;
   filename: string;
   version: string;
-  tags: string[];
+  // tags: string[];
   src: string;
   pipeline_name?: string;
   [key: string]: any;

@@ -8,53 +8,70 @@ import { Logger } from "@nestjs/common"
 import * as chalk from 'chalk'
 import { Job } from "./pipelining.decl"
 import { NsJail } from "src/jail/NsjailRush"
+import { CompileStrategy } from "src/executables/executables"
+import { error } from "console"
 
 const logger = new Logger('Pilelining');
+
+export interface Context {
+  '@src': string;
+  'cwd'?: string;
+  [key: string]: string | undefined;
+}
+
 export class BKPileline {
   config: object
-  context: object = { // The following are predefined variables
+  context: Context = { // The following are predefined variables
     "@src": config.src_path,
   }
   timeout_ms: number = 0
   onSuccess = 'next'
   onFailure = 'stop'
+  ret?: object
 
-  constructor(config_path: string | object) {
-    if (typeof config_path === 'object') {
-      this.config = config_path
+  constructor(cfg: string | { jobs: Job[] }) {
+    if (typeof cfg === 'object') {
+      this.config = cfg
     } else {
-      this.config = JSON.parse(fs.readFileSync(config_path, 'utf8'))
+      this.config = JSON.parse(fs.readFileSync(cfg, 'utf8'))
     }
     this.context = Object.assign(this.context, recursive_render_obj(this.config['constants'], this.context))
   }
 
-  async run(ignore_timeout = false): Promise<object[]> {
+  async run(ctx : {[key: string]: string} = undefined, ignore_timeout = false): Promise<object> {
+    if (ctx) {
+      this.ctx(ctx)
+    }
+    // console.log(`ctx is`,this.context)
     // if has timeout, run with timeout
     if (!ignore_timeout && this.timeout_ms != 0) {
-      return timeout(this.run(true), this.timeout_ms)
+      return timeout(this.run(ctx, true), this.timeout_ms)
     }
-
+    
     const { jobs } = this.initRun()
-    const rets = []
-
+    // console.log(`jobs are`, jobs)
+    const rets = {}
+    let job_cnt = 0
     for (const job of jobs) {
       formatJob(job)
+      job_cnt++
+      ifUndefinedThenAssign(job, 'name', 'job_' + job_cnt.toString())
       const executor = new JobExecutor(job, this.context)
 
       try {
-        logger.log(`Running job ${job.name}`)
+        logger.log(`Running job ${job.name} in pileline ${this.config['name'] ?? '<Anonymous>'}`)
         const [ret, duration] = await timed(() => executor.run())
-        rets.push(ret)
+        rets[job.name] = ret
         logger.log(`${chalk.white('Job')} ${chalk.blueBright(job.name)} finished \t +${chalk.yellow(duration.toString(), 'ms')}`)
         this.updateCtx(ret, job)
-        this.conditional(job, this.onSuccess)
+        this.conditional(this.onSuccess)
       } catch (err) {
         console.log(`when executing job ${job.name}`, err)
-        this.conditional(job, this.onFailure)
+        this.conditional(this.onFailure)
         throw err //by default, if a job failed, the whole pipeline failed
       }
     }
-
+    this.ret = rets
     return rets
   }
 
@@ -62,10 +79,11 @@ export class BKPileline {
     this.onSuccess = this.config['onSuccess'] ?? 'next'
     this.onFailure = this.config['onFailure'] ?? 'stop'
     const jobs = this.config['jobs']
+    //TODO need to check duplicate job names
     return { jobs }
   }
 
-  private conditional(job, strategy) {
+  private conditional(strategy) {
     this.job_completion_strategy[strategy]()
   }
 
@@ -74,7 +92,7 @@ export class BKPileline {
     'stop': (msg: string) => { throw new Error(msg) },
   }
 
-  private updateCtx(ret: Promise<unknown>, job: any) {
+  private updateCtx(ret: Promise<unknown>, job: Job) {
     if (typeof ret === 'string') {
       this.context[job.name] = ret
     } else if (typeof ret === 'object') {
@@ -93,14 +111,35 @@ export class BKPileline {
     return this
   }
 
-  public static fromConfig(config: object) {
+  public static fromConfig(config: { jobs: Job[] }) {
     return new BKPileline(config)
   }
 
-  public static fromJobs(...jobs: object[]) {
+  public static fromJobs(...jobs: Job[]) {
     return new BKPileline({
       jobs: jobs
     })
+  }
+
+  getJobByName(name: string) {
+    const jobs = this.config['jobs']
+    for (const job of jobs) {
+      if (job.name === name) {
+        return job
+      }
+    }
+    return null
+  }
+
+  public static fromJobAbbrs(jobabbrs: CompileStrategy.JobAbbr[]) {
+    const jobs = jobabbrs.map(jobabbr => JobAbbrToJob(jobabbr))
+    return new BKPileline({
+      jobs: jobs
+    })
+  }
+
+  getRet(name) {
+    return this.ret[name]
   }
 
   static predefined(pipelineName: string) {
@@ -117,8 +156,41 @@ export class BKPileline {
   }
 }
 
-function formatJob(job: object) {
-  ifUndefinedThenAssign(job, 'name', '<Anonymous>')
+function formatJob(job: Job) {
+  // ifUndefinedThenAssign(job, 'name', '<Anonymous>')
+}
+
+function JobAbbrToJob(jobAbbr: CompileStrategy.JobAbbr): Job {
+  const { file_no_limit, memory_limit_kb, mount, mount_ro, mount_tmp, netns, time_limit_ms, use_jail, name } = jobAbbr //TODO: impl this
+  const mergeNetns = (job : Job) => { //TODO refactor this
+    if (!netns) return job
+    job.netns = netns
+    return job
+  }
+  if ('require' in jobAbbr) {
+    const { require, with: _with } = jobAbbr
+    return mergeNetns(require_procedure(require).asRaw())
+  } else if ('use' in jobAbbr) {
+    const { use, with: _with } = jobAbbr
+    return mergeNetns(require_procedure(use).asRaw())
+  } else if ('run' in jobAbbr) {
+    const { run } = jobAbbr
+    const jail = use_jail
+      ? {
+        file_no_limit,
+        mem_max: memory_limit_kb,
+        mount,
+        mount_readonly: mount_ro,
+        mount_tmpfs: mount_tmp,
+        timeout: time_limit_ms,
+      }
+      : undefined;
+    return  mergeNetns({
+      name: `<Anonymous>`,
+      run,
+      jail
+    })
+  } else throw new error(`Invalid job abbr `, jobAbbr)
 }
 
 export function require_procedure(procedure_name: string): ProcedurePiece {
@@ -129,7 +201,7 @@ export function require_procedure(procedure_name: string): ProcedurePiece {
   return new ProcedurePiece(JSON.parse(fs.readFileSync(procedure_path, 'utf8')))
 }
 
-export function require_config(config_name: string): object {
+export function require_config(config_name: string): {jobs: Job[]} {
   const config_path = path.resolve(config.configs_path, `./predefined/${config_name}.json`)
   if (!fs.promises.access(config_path)) {
     throw new Error(`Config ${config_name} not found`)
@@ -169,6 +241,10 @@ class ProcedurePiece {
     const jobs = recursive_render_obj(this.raw, ctx)
     return jobs
   }
+
+  asRaw() {
+    return this.raw as Job
+  }
 }
 
 // CoR pattern
@@ -185,12 +261,13 @@ class PlainSystemCommandHandler implements ICommandHandler {
 
 class NSJailCommandHandler implements ICommandHandler {
   handle(inner: string, context: { [key: string]: any }): string {
-    if(!context.hasOwnProperty('jail')) {
+    if (!context.hasOwnProperty('jail')) {
       return inner
     }
     if (context.netns) {
       ifUndefinedThenAssign(context.jail, 'disable_clone_newnet', { disable_clone_newnet: true })
     }
+
     const jail = NsJail.asDangling().loadConfig(context.jail)
 
     jail.setCommand(inner)
@@ -201,7 +278,7 @@ class NSJailCommandHandler implements ICommandHandler {
 
 class NetnsCommandHandler implements ICommandHandler {
   handle(inner: string, context: { [key: string]: any }): string {
-    if(!context.hasOwnProperty('netns')) {
+    if (!context.hasOwnProperty('netns')) {
       return inner
     }
     return `/usr/sbin/ip netns exec ${context.netns} ${inner}`
@@ -240,26 +317,27 @@ export class JobExecutor {
     const args = command.split(' ')
     command = args.shift()
     const assembled = this.assemble_command(command, args)
-    ifTrueThenDo(this.job.verbose, () => console.log(`@assembled:`, assembled))
+    ifTrueThenDo(this.job.verbose, () => console.log(`# ${this.name}.cmd = \n`, assembled))
     const ret = await runCommand(assembled)
-    ifTrueThenDo(this.job.verbose, () => console.log(`@returing:`, ret))
+    ifTrueThenDo(this.job.verbose, () => console.log(`# ${this.name}.ret = \n`, ret))
     return ret
   }
 
-  static filters : ICommandHandler[] = [
+  static filters: ICommandHandler[] = [
     new PlainSystemCommandHandler(),
     new NSJailCommandHandler(),
     new NetnsCommandHandler(),
   ]
-  
-  assemble_command(command: string, args: string[]) : string { //TODO: refactor this, use interceptors
-    let ctx : {[key: string]: any} = Object.assign({
+
+  assemble_command(command: string, args: string[]): string { //TODO: refactor this, use interceptors
+    let ctx: { [key: string]: any } = Object.assign({
       command,
       args
     }, this.job, this.context)
 
     for (const filter of JobExecutor.filters) {
       command = filter.handle(command, ctx)
+      command = render(command, ctx)
     }
     return command
   }
@@ -277,7 +355,7 @@ export class JobExecutor {
   }
 
   public get name(): string {
-    return this.job['name']
+    return this.job.name
   }
 
   public inject(ctx: { [x: string]: any; }) {

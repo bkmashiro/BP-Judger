@@ -2,8 +2,8 @@ import { JSONMessage } from "./rg-grpc/ts/jsonmsg"
 import { randomUUID } from "crypto";
 import * as grpc from '@grpc/grpc-js';
 import { EventEmitter } from "events";
-import { GameRuleProxyManager } from "./GameRuleProxy";
 import { GameID, PlayerID } from "../../../game/players/IPlayer";
+import { GameRuleProxyManager } from "../GameRuleProxyManager";
 export type RgSectionId = GameID | PlayerID
 export type RgData = {
   id: RgSectionId,
@@ -56,7 +56,7 @@ export class RG extends EventEmitter {
     if (id) { // set id when received one 
       this.id = id //TODO Extrat this
       RG.RGS.set(id, this)
-      GameRuleProxyManager.getGameRuleProxy(id).register_rg(this)
+      GameRuleProxyManager.get(id).register_rg(this)
     } else throw new Error("[RG.onReady] No id found in data")
     this.emit("on-ready", msg)
   }
@@ -68,12 +68,14 @@ export class RG extends EventEmitter {
   }
 
   onQuery(msg: RgMsg) {
-    if(!this.onQueryHandler) throw new Error("onQueryHandler is null")
+    if (!this.onQueryHandler) throw new Error("onQueryHandler is null")
     let resp = this.onQueryHandler(DataOf(msg))
-    this.writeRgMsg({ action: "return", msgId: MsgIdOf(msg), data: {
-      __RET__: resp,
-      id: this.id
-    } })
+    this.writeRgMsg({
+      action: "return", msgId: MsgIdOf(msg), data: {
+        __RET__: resp,
+        id: this.id
+      }
+    })
     this.emit("on-query", msg)
   }
 
@@ -99,7 +101,7 @@ export class RG extends EventEmitter {
 
   async doQuery(data: Omit<RgData, "id"> = {}, timeout = 1000): Promise<any> {
     // console.log(`[RG.doQuery] ${this.funcName} of id ${this.id} is querying with data ${JSON.stringify(data)}`)
-    if(!this.id) throw new Error("id is null")
+    if (!this.id) throw new Error("id is null")
     const data_with_id = { ...data, id: this.id } as RgData
     const _msgId = RG.newMsgId()
     this.writeRgMsg({ action: "query", msgId: _msgId, data: data_with_id })
@@ -107,10 +109,10 @@ export class RG extends EventEmitter {
       return await withTimeout(new Promise((resolve, reject) => {
         this.quires_cb_resolve.set(_msgId, resolve);
         this.quires_cb_reject.set(_msgId, reject);
-      }), timeout, ()=>{
+      }), timeout, () => {
         this.quires_cb_resolve.delete(_msgId)
         this.quires_cb_reject.delete(_msgId)
-        });
+      });
     } catch (e) {
       console.log(`[RG.doQuery] Error: ${e}`)
     }
@@ -120,25 +122,25 @@ export class RG extends EventEmitter {
   ready_cb_reject: (reason?: any) => void
 
   async Ready(data: Omit<RgData, "id"> = {}, timeout = 1000): Promise<RgData> {
-    if(!this.id) throw new Error("id is null")
+    if (!this.id) throw new Error("id is null")
     this.writeRgMsg({ action: "ready", msgId: RG.newMsgId(), data: { id: this.id } })
     try {
       return await withTimeout(new Promise((resolve, reject) => {
         this.ready_cb_resolve = resolve;
         this.ready_cb_reject = reject;
-      }), timeout, ()=>{
+      }), timeout, () => {
         this.ready_cb_resolve = null;
         this.ready_cb_reject = null;
       });
-    } catch(e){
+    } catch (e) {
       console.log(`[RG.doReady] Error: ${e}`)
     }
   }
 
   writeRgMsg(msg: RgMsg) {
-    try{
+    try {
       this.stream.write(JSONMessage.fromObject({ value: JSON.stringify(msg) }))
-    } catch(e){
+    } catch (e) {
       console.log(`[RG.writeRgMsg] Error: ${e}`)
     }
   }
@@ -177,7 +179,7 @@ function MsgIdOf(msg: RgMsg) {
   return msg.msgId
 }
 
-function withTimeout(promise, ms, whenFinished : () => any = undefined): Promise<any> {
+function withTimeout(promise, ms, whenFinished: () => any = undefined): Promise<any> {
   return new Promise((resolve, reject) => {
     const timeoutId = setTimeout(() => {
       reject(new Error('Promise timeout'));
@@ -186,11 +188,11 @@ function withTimeout(promise, ms, whenFinished : () => any = undefined): Promise
     promise.then((result) => {
       clearTimeout(timeoutId);
       resolve(result);
-      if(whenFinished) whenFinished()
+      if (whenFinished) whenFinished()
     }).catch((error) => {
       clearTimeout(timeoutId);
       reject(error);
-      if(whenFinished) whenFinished()
+      if (whenFinished) whenFinished()
     });
 
 

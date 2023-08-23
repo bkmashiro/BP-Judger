@@ -1,16 +1,20 @@
 import { ServerDuplexStream } from "@grpc/grpc-js";
 import { JSONMessage, UnimplementedGameRuleProxyServiceService } from "./rg-grpc/ts/jsonmsg";
-import { MatchContext } from "../../../game/game";
+import { Game, MatchContext } from "../../../game/game";
 import { RG } from "./RG";
 import * as grpc from '@grpc/grpc-js';
 import { config } from "../../../configs/config";
 import { GameRuleFactory } from "../GameRuleFactory";
-import { GameRuleBase } from "../GameRuleBase";
 import { GameID, PlayerMoveWarpper } from "../../../game/players/IPlayer";
 import { Logger } from "@nestjs/common";
+import { GameRuleBase } from "../GameRuleBase";
+import { GameRuleProxyManager } from "../GameRuleProxyManager";
 
 export class GameRuleProxy extends GameRuleBase {
-  gameId: GameID // A game is always bind to a gamerule
+  public get gameId() : string | null {
+    return this._parent.uuid
+  }
+   // A game is always bind to a gamerule
 
   rgs: Record<string, RG> = {
     "ValidateGamePreRequirements": null,
@@ -20,11 +24,10 @@ export class GameRuleProxy extends GameRuleBase {
     "InitGame": null,
   }
 
-  constructor(gameId: GameID) {
+  constructor() {
     super()
-    this.gameId = gameId
-    this.on("rg-registered", () => {
-      const _ = this.isReady()
+    this.on("rg-registered", async () => {
+      const _ = await this.isReady() // just to update status
     })
   }
 
@@ -35,7 +38,6 @@ export class GameRuleProxy extends GameRuleBase {
     Object.assign(ctx, ret_ctx)
   }
 
-  msgQueue: MatchContext[] = []
   async validate_game_pre_requirements(ctx: MatchContext): Promise<boolean> {
     // console.log(`[validate_game_pre_requirements] called, ctx is ${JSON.stringify(ctx)}`)
     await this.whenReady
@@ -86,25 +88,25 @@ export class GameRuleProxy extends GameRuleBase {
     this.once("ready", resolve)
   })
 
-
-
   public async isReady(): Promise<boolean> {
     // only if all rgs are registered
-    if (Object.values(this.rgs).every(rg => rg !== null)) {
+    const values = Object.values(this.rgs)
+    const res = values.every(rg => rg !== null)
+    if (res) {
       if (this.status !== "ready") {
         this.status = "ready"
         this.emit("ready")
         console.log(`GameRuleProxy ${this.gameId} is ready`)
       }
-      return true
+      return Promise.resolve(true)
     }
-    return false
+    return Promise.resolve(false)
   }
 
   override gameover(): this {
     super.gameover()
     this.close()
-    GameRuleProxyManager.removeGameRuleProxy(this.gameId)
+    GameRuleProxyManager.remove(this.gameId)
     return this
   }
 
@@ -113,70 +115,13 @@ export class GameRuleProxy extends GameRuleBase {
       rg.close()
     }
   }
-}
 
-export class GameRuleProxyManager extends GameRuleFactory {
-  private static logger = new Logger("GameRuleProxyManager")
-  private static _instance: GameRuleProxyManager
-
-  static get instance(): GameRuleProxyManager {
-    if (!this._instance) {
-      this._instance = new GameRuleProxyManager()
-    }
-    return this._instance
-  }
-
-  static active_proxies: Map<GameID, GameRuleBase> = new Map()
-  private constructor() {
-    super()
-    GameRuleProxyManager.startServer()
-  }
-  newGameRuleProxy(uuid: string): GameRuleBase {
-    const proxy = new GameRuleProxy(uuid)
-    GameRuleProxyManager.active_proxies.set(uuid, proxy)
-    return proxy
-  }
-
-  static getGameRuleProxy(uuid: GameID): GameRuleProxy | undefined {
-    return GameRuleProxyManager.active_proxies.get(uuid) as GameRuleProxy
-  }
-
-  static removeGameRuleProxy(uuid: GameID) {
-    GameRuleProxyManager.logger.log(`GameRule ${uuid} removed`)
-    GameRuleProxyManager.active_proxies.delete(uuid)
-  }
-
-  static server = new grpc.Server();
-  static startServer() {
-    this.server.addService(UnimplementedGameRuleProxyServiceService.definition, new GameRuleGRPCService());
-    this.server.bindAsync(
-      config.gameRuleProxyUrl,
-      grpc.ServerCredentials.createInsecure(),
-      (err, port) => {
-        if (err) {
-          console.log("Error in binding port", err)
-          return
-        }
-        this.server.start()
-      }
-    );
-    GameRuleProxyManager.logger.log("GameRuleProxyService is running on", config.gameRuleProxyUrl)
-  }
-
-  static shutdownServer() {
-    this.server.tryShutdown((err) => {
-      if (err) {
-        console.log("Error in shutting down server", err)
-        return
-      }
-      console.log("Server shut down")
-    })
-  }
-
-  static forceShutdownServer() {
-    this.server.forceShutdown()
+  override bind_parent(game: Game): void {
+    super.bind_parent(game)
+    GameRuleProxyManager.set(this)
   }
 }
+
 
 export class GameRuleGRPCService extends UnimplementedGameRuleProxyServiceService {
   ValidateGamePreRequirements(call: ServerDuplexStream<JSONMessage, JSONMessage>): void {
@@ -199,8 +144,3 @@ export class GameRuleGRPCService extends UnimplementedGameRuleProxyServiceServic
     new RG(null, "InitGame", call, null)
   }
 }
-
-
-
-
-
