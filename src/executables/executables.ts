@@ -20,7 +20,7 @@ export namespace Executables {
 
     if (await FileCache.instance.has(code_fingerprint)) { // if cached, skip compile
       const codeOutPath = await FileCache.instance.get(code_fingerprint)
-      console.log(`Code ${code_fingerprint} found in cache`)
+      // console.log(`Code ${code_fingerprint} found in cache`)
       return codeOutPath
     }
 

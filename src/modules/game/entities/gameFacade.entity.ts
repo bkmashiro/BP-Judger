@@ -1,8 +1,9 @@
 import { IPlayerFacade, PlayerFacade } from "../../player/entities/playerFacade.entity"
 import { GameruleFacade } from "../../gamerule/entities/gameruleFacade.entity"
 import { Gameover } from "./gameover.entity"
-import { Game, GameManager } from "src/game/game"
+import { GAMESTATE, Game, GameManager } from "src/game/game"
 import { GameRuleName } from "src/game/players/IPlayer"
+import { Timely } from "src/utils/timely"
 
 
 type GameState = 'setup' | 'preparing' | 'running' | 'finished' | 'error' | 'paused' | 'aborted' | 'unknown'
@@ -11,11 +12,11 @@ export class GameFacade {
   uuid: string
   game: Game
   players: IPlayerFacade[]
-  gamerule: GameruleFacade
-  state: GameState
+  gamerule: GameruleFacade 
   error?: string
   gameover?: Gameover
-  // [key: string]: any
+
+
   constructor(gameRuleName: GameRuleName = 'GameRuleProxy') {
     this.game = GameManager.newGame(gameRuleName)
     this.gamerule = new GameruleFacade() //TODO implement this
@@ -31,20 +32,37 @@ export class GameFacade {
     }
   }
 
-  static fromObject(obj: any): GameFacade {
+  static fromObject(obj): GameFacade {
     const game = new GameFacade()
     game.uuid = obj.uuid
     game.players = obj.players.map((player: any) => PlayerFacade.fromObject(player))
     game.gamerule = GameruleFacade.fromObject(obj.gamerule)
-    game.state = obj.state
-    game.error = obj.error
-    game.gameover = obj.gameover
+
+
     return game
   }
+  
+  public get state() : GAMESTATE {
+    return this.game.state
+  }
 
+  set state(state: GAMESTATE) {
+    this.game.state = state
+  }
+  
   prepare() {
-    this.state = 'preparing'
+    this.state = 'organizing'
     this.gamerule.prepare()
     this.players.forEach(player => player.prepare())
+  }
+}
+
+
+export type GameConfig = {
+  timeouts: {
+    think: number
+    prepare: number
+    run: number
+    all: number
   }
 }

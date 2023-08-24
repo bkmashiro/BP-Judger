@@ -62,6 +62,7 @@ export class PlayerFacade {
   }
 
   async prepare(): Promise<PreparedPlayerType> {
+    // TODO: if prepared, skip
     const startegy = prepare_strategy[this.type]
     if (startegy) {
       return await startegy.call(this, this)

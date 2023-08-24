@@ -1,6 +1,6 @@
 import { EventEmitter } from "events"
 import { Mutex } from 'async-mutex';
-import { GameID, GameRuleName, IPlayer, PlayerID } from "./players/IPlayer"
+import { GameID, GameRuleName, IPlayer, PlayerID, PlayerMoveWarpper } from "./players/IPlayer"
 import { PlayerBase } from "./players/PlayerBase";
 import { GameRuleFactory } from "./gamerules/GameRuleFactory";
 import { GameRuleBase, IGameRuleConstructor, GAME_SHALL_OVER, GAME_SHALL_BEGIN } from "./gamerules/GameRuleBase";
@@ -8,6 +8,8 @@ import { config } from "../configs/config";
 import { All } from "src/utils";
 import { Logger } from "@nestjs/common";
 import { GameRuleProxy } from "./gamerules/gameruleProxy/GameRuleProxy";
+import { Timely } from "src/utils/timely";
+import { GameConfig } from "src/modules/game/entities/gameFacade.entity";
 
 export type GameContext = {
   "players": Record<PlayerID, IPlayer>,
@@ -30,7 +32,7 @@ export type MatchContext = {
 export class GameManager {
   static activeGames: Record<GameID, Game> = {}
 
-  public static newGame(gameruleName: GameRuleName)  {
+  public static newGame(gameruleName: GameRuleName) {
     if (!GameRuleManager.gameRules.hasOwnProperty(gameruleName)) {
       throw new Error(`Game ${gameruleName} not found`)
     }
@@ -38,12 +40,12 @@ export class GameManager {
     const gameId = GameManager.newGameID()
     const gameRule = GameRuleManager.instantiate(gameruleName, gameId)
     const game = new Game(gameId, gameRule)
-    console.log(`Game ${gameId} created`)
+    // console.log(`Game ${gameId} created`)
     GameManager.activeGames[gameId] = game
     return game
   }
 
-  static newGameID() : GameID {
+  static newGameID(): GameID {
     return "ac856d20-4e9c-409f-b1b3-d2d41a1df9a0"
     // return randomUUID()
   }
@@ -60,7 +62,7 @@ export class GameRuleManager {
     return GameRuleManager.gameRules[gameRuleName]
   }
 
-  static instantiate(gameRuleName: GameRuleName, bindTo: GameID) : GameRuleBase {
+  static instantiate(gameRuleName: GameRuleName, bindTo: GameID): GameRuleBase {
     const gameRule = GameRuleManager.get(gameRuleName)
     if (!gameRule) {
       throw new Error(`GameRule ${gameRuleName} not found`)
@@ -89,13 +91,20 @@ const logger = new Logger('Game')
 export class Game extends EventEmitter {
   players: Record<string, IPlayer> = {}
   uuid: string
-
   gameRule: GameRuleBase
   game_ctx: GameContext   // as a game context
   match_ctx: MatchContext = {} // to send to player 
   state: GAMESTATE = 'organizing'
-
   mutex = new Mutex();
+  stopFlag = false
+  config : GameConfig = {
+    timeouts: { //TODO make this configurable
+      think: 1000,
+      prepare: 1000,
+      run: 1000,
+      all: 10000,
+    }
+  }
 
   constructor(id: string, gameRule: GameRuleBase) {
     super()
@@ -129,6 +138,23 @@ export class Game extends EventEmitter {
         release();
       }
     })
+
+    // TODO clean this
+    const timely = new Timely.Timely()
+    timely.mark('think', this.config.timeouts.think)
+    timely.mark('prepare', this.config.timeouts.prepare)
+    timely.mark('run', this.config.timeouts.run)
+    timely.mark('all', this.config.timeouts.all)
+
+    this.on('player-move', (gameId, playerId) => {
+      try {
+        timely.emit('think')
+      } catch (e) {
+        if (e instanceof Timely.TimeoutException) {
+          this.stopFlag = true
+        } else throw e
+      }
+    })
   }
 
   async begin() {
@@ -137,34 +163,38 @@ export class Game extends EventEmitter {
     this.gamebeginCb && this.gamebeginCb(this)
     logger.debug(`game ${this.uuid} begin`)
     let turn = 0
-    let gameNotOver = true
-    while (gameNotOver) {
-      if (turn > config.GAME_MAX_ROUND) {
-        throw new Error(`Game ${this.uuid} turns exceed ${config.GAME_MAX_ROUND}`)
-      }
-      turn += 1
-      const moves = []
-      for (const playerId in this.players) {
-        const player = this.players[playerId]
-        const moveWarpper = (await player.move(this.match_ctx)) // TODO: make validation, and do not use magic string
-        const move = moveWarpper['move'] // TODO: make validation, and do not use magic string
-
-        if (!await this.gameRule.validate_move(this.match_ctx, moveWarpper)) {
-          throw new Error(`Game ${this.uuid} invalid move ${JSON.stringify(move)}`)
+    try {
+      while (true) {
+        if (turn > config.GAME_MAX_ROUND) {
+          throw new Error(`Game ${this.uuid} turns exceed ${config.GAME_MAX_ROUND}`)
         }
+        turn++
+        const moves = []
+        for (const playerId in this.players) {
+          const { moveWarpper, move } = await this.requireMove(playerId); // TODO: make validation, and do not use magic string
 
-        moves.push(move)
+          await this.validateMove(moveWarpper, move);
 
-        await this.gameRule.accept_move(this.match_ctx, moveWarpper)
+          await this.acceptMove(moves, move, moveWarpper);
 
-        if (await this.gameRule.validate_move_post_requirements(this.match_ctx, moveWarpper) === GAME_SHALL_OVER) {
-          gameNotOver = false
-          break
+          // TODO refactor this
+          if (this.stopFlag) {
+            throw new GameAbortException()
+          }
+
+          if (await this.gameRule.validate_move_post_requirements(this.match_ctx, moveWarpper) === GAME_SHALL_OVER) {
+            throw new GameOverException()
+          }
         }
       }
-
-      // this.emit('turn', this, moves)
+    } catch (e) {
+      if (e instanceof GameOverException) {
+        // this is normal
+      } else {
+        throw e
+      }
     }
+
 
     // close all player
     for (const player of Object.values(this.players)) {
@@ -175,6 +205,26 @@ export class Game extends EventEmitter {
     this.emit('gameover', this.game_ctx)
     this.gameoverCb && this.gameoverCb(this.game_ctx)
     logger.debug(`game ${this.uuid} over`)
+  }
+
+  private async acceptMove(moves: any[], move: any, moveWarpper: PlayerMoveWarpper) {
+    moves.push(move);
+
+    await this.gameRule.accept_move(this.match_ctx, moveWarpper);
+  }
+
+  private async validateMove(moveWarpper: PlayerMoveWarpper, move: any) {
+    if (!await this.gameRule.validate_move(this.match_ctx, moveWarpper)) {
+      throw new Error(`Game ${this.uuid} invalid move ${JSON.stringify(move)}`);
+    }
+  }
+
+  private async requireMove(playerId: string) {
+    const player = this.players[playerId]; //TODO: clean this
+    const moveWarpper = (await player.move(this.match_ctx)); // TODO: make validation, and do not use magic string
+    this.emit('player-move', this.uuid, player.uuid);
+    const move = moveWarpper['move']; // TODO: make validation, and do not use magic string
+    return { moveWarpper, move };
   }
 
   registerPlayer(gamer: PlayerBase) {
@@ -225,6 +275,20 @@ export class Game extends EventEmitter {
     return await this.gameRule.isReady()
       && All(Object.values(this.players), player => player.ready)
       && await this.gameRule.validate_game_pre_requirements(this.game_ctx) === GAME_SHALL_BEGIN
+  }
+}
+
+class GameOverException extends Error {
+  constructor() {
+    super()
+    this.name = "GameOverException"
+  }
+}
+
+class GameAbortException extends Error {
+  constructor() {
+    super()
+    this.name = "GameAbortException"
   }
 }
 
