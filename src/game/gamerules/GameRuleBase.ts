@@ -33,6 +33,7 @@ export abstract class GameRuleBase extends EventEmitter implements IGameRule {
    */
   bind_parent(game: Game): void {
     this._parent = game
+    this.bind_ctx(game.game_ctx)
   }
 
   abstract init_game(ctx: MatchContext): Promise<void>

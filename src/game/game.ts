@@ -96,7 +96,6 @@ export class Game extends EventEmitter {
   match_ctx: MatchContext = {} // to send to player 
   state: GAMESTATE = 'organizing'
   mutex = new Mutex();
-  stopFlag = false
   stopReason?: string
   timely = new Timely.Timely()
   config: GameConfig = {
@@ -119,7 +118,6 @@ export class Game extends EventEmitter {
       matchCtx: this.match_ctx,
     }
 
-    this.gameRule.bind_ctx(this.game_ctx)
     gameRule.bind_parent(this)
     gameRule.on('ready', () => {
       this.emit('status-change')
@@ -143,7 +141,6 @@ export class Game extends EventEmitter {
 
     // TODO clean this
     this.timely.mark('think', this.config.timeouts.think)
-      // .mark('prepare', this.config.timeouts.prepare)
       .mark('run', this.config.timeouts.run)
       .mark('all', this.config.timeouts.all)
 
@@ -151,37 +148,26 @@ export class Game extends EventEmitter {
 
   async begin() {
     await this.gameRule.init_game(this.match_ctx)
-    this.emit('game-begin', this)
+    this.init();
     this.gamebeginCb && this.gamebeginCb(this) // TODO: clean this
-    logger.debug(`game ${this.uuid} begin`)
     const { think, validate, accept, pre, post } = this.warpTimely()
     let turn = 0
+    const moves = []
+
     try {
       while (true) {
-        if (turn > config.GAME_MAX_ROUND) {
-          throw new Error(`Game ${this.uuid} turns exceed ${config.GAME_MAX_ROUND}`)
-        }
-        turn++
-        const moves = []
+        turn = this.next(turn);
         for (const playerId in this.players) {
-
           const { moveWarpper, move } = await think(playerId); // TODO: make validation, and do not use magic string
-
           await validate(moveWarpper, move);
-
           await accept(moves, move, moveWarpper);
-
-          // TODO refactor this
-          if (this.stopFlag) {
-            throw new GameAbortException(this.stopReason)
-          }
-
           if (await post(this.match_ctx, moveWarpper) === GAME_SHALL_OVER) {
             throw new GameOverException()
           }
         }
       }
     } catch (e) {
+      this.setState('error')
       if (e instanceof GameOverException) {
         // this is normal
         throw e
@@ -202,6 +188,20 @@ export class Game extends EventEmitter {
       this.gameoverCb && this.gameoverCb(this.game_ctx)
       logger.debug(`game ${this.uuid} over`)
     }
+  }
+
+
+  private init() {
+    this.emit('game-begin', this);
+    logger.debug(`game ${this.uuid} begin`);
+  }
+
+  private next(turn: number) {
+    if (turn > config.GAME_MAX_ROUND) {
+      throw new Error(`Game ${this.uuid} turns exceed ${config.GAME_MAX_ROUND}`);
+    }
+    turn++;
+    return turn;
   }
 
   private warpTimely(): { think: any; validate: any; accept: any; pre: any; post: any; } {
