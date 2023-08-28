@@ -27,40 +27,54 @@
 */
 
 import { Logger } from "@nestjs/common"
+import { ObjectHasAllKeys } from "../utils"
 
 export namespace Timely {
   const logger = new Logger("Timely")
   export class Timely {
-    private marks : {}
-    private events : {}
+    private marks: {} = {}
+    private events: {} = {}
 
     public mark(name: string, interval: number) {
-      if (name == undefined) {
-        throw new Error("Trigger name can not be undefined.")
+      if (name === undefined) {
+        throw new Error("Mark name can not be undefined.")
       }
-
-      if (interval == undefined) {
-        throw new Error("Trigger interval can not be undefined.")
+      if (interval === undefined) {
+        throw new Error("Mark interval can not be undefined.")
       }
-
-      if (this.marks[name] != undefined) {
-        throw new Error(`Trigger ${name} is already defined.`)
+      if (ObjectHasAllKeys(this.marks, [name])) {
+        throw new Error(`Mark ${name} is already defined.`)
       }
 
       this.marks[name] = interval
+
+      return this
     }
 
     public unmark(name: string) {
       if (name == undefined) {
-        throw new Error("Trigger name can not be undefined.")
+        throw new Error("Mark name can not be undefined.")
       }
 
       if (this.marks[name] == undefined) {
-        throw new Error(`Trigger ${name} is not defined.`)
+        throw new Error(`Mark ${name} is not defined.`)
       }
 
       delete this.marks[name]
       delete this.events[name]
+    }
+
+    // start a mark but not emit it
+    public start(name: string) {
+      if (name == undefined) {
+        throw new Error("Mark name can not be undefined.")
+      }
+
+      if (this.marks[name] == undefined) {
+        throw new Error(`Mark ${name} is not defined.`)
+      }
+
+      this.events[name] = this.now
     }
 
     public emit(name: string): number {
@@ -79,7 +93,7 @@ export namespace Timely {
         return
       }
 
-      // Check if the trigger has timed out.
+      // Check if the mark has timed out.
       const dif = this.now - this.events[name]
 
       if (dif >= this.marks[name]) {
@@ -88,14 +102,46 @@ export namespace Timely {
       } else {
         this.events[name] = this.now
       }
-
+      console.log(`Mark ${name} takes ${dif}ms`)
       return dif
     }
-    
-    public get now() : number {
+    /**
+     * use emitter to warp a function, when the function is called, the mark will be emitted.
+     * @param func 
+     */
+    public emitter<T extends (...args: any) => any> (func: T, name: string = undefined): T {
+      if (name == undefined) {
+        name = func.name
+      }
+
+      if (name == undefined) {
+        throw new Error("Mark name can not be undefined.")
+      }
+
+      if (this.marks[name] == undefined) {
+        throw new Error(`Mark ${name} is not defined.`)
+      }
+
+      return ((args : Parameters<T>) => {
+        this.emit(name)
+        return func(args) as ReturnType<T>
+      }) as T
+    }
+
+    /** register func and make alias here! */
+    public emitters<T extends {}>(functions: T): T {
+      const result = {} as T
+      for (const [name, func] of Object.entries(functions)) {
+        result[name] = this.emitter(func as any, name)
+      }
+      return result
+    }
+
+    public get now(): number {
       return performance.now()
     }
   }
+  type FunctionArgs<T> = T extends (...args: infer Args) => any ? Args : never;
 
   export class TimeoutException extends Error {
     constructor(message: string) {
@@ -104,3 +150,5 @@ export namespace Timely {
     }
   }
 }
+
+

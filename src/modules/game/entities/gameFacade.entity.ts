@@ -59,9 +59,30 @@ export class GameFacade {
 
 
 export type GameConfig = {
+  /**
+   * This is the **POST-CHECK** timeout for the game, that is
+   * After one action is completed, the game will check if the time is exceeded,
+   * if the limitation is exceeded, a error will be thrown.
+   * 
+   * Note that, even a action has timed out, the config here won't immediately stop it,
+   * it will be stopped after the action is completed. (it's when it emits a mark)
+   * 
+   * if you need a hard timeout, it's set in [TODO]
+   */
   timeouts: {
-    think: number
-    prepare: number
+    /** in ms, the maxium time player can think (per move query) */
+    think: number 
+    /** 
+     * @deprecated
+     * in ms, the maxium time to prepare, this is commonly used in programs that need compiling 
+     * 
+     * key: player identifier
+     * 
+     * value: max time comsumption 
+    */
+    prepare: {
+      [key: string]: number 
+    }
     run: number
     all: number
   }

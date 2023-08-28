@@ -97,10 +97,12 @@ export class Game extends EventEmitter {
   state: GAMESTATE = 'organizing'
   mutex = new Mutex();
   stopFlag = false
-  config : GameConfig = {
+  stopReason?: string
+  timely = new Timely.Timely()
+  config: GameConfig = {
     timeouts: { //TODO make this configurable
-      think: 1000,
-      prepare: 1000,
+      think: 100,
+      prepare: {},
       run: 1000,
       all: 10000,
     }
@@ -140,28 +142,19 @@ export class Game extends EventEmitter {
     })
 
     // TODO clean this
-    const timely = new Timely.Timely()
-    timely.mark('think', this.config.timeouts.think)
-    timely.mark('prepare', this.config.timeouts.prepare)
-    timely.mark('run', this.config.timeouts.run)
-    timely.mark('all', this.config.timeouts.all)
+    this.timely.mark('think', this.config.timeouts.think)
+      // .mark('prepare', this.config.timeouts.prepare)
+      .mark('run', this.config.timeouts.run)
+      .mark('all', this.config.timeouts.all)
 
-    this.on('player-move', (gameId, playerId) => {
-      try {
-        timely.emit('think')
-      } catch (e) {
-        if (e instanceof Timely.TimeoutException) {
-          this.stopFlag = true
-        } else throw e
-      }
-    })
   }
 
   async begin() {
     await this.gameRule.init_game(this.match_ctx)
     this.emit('game-begin', this)
-    this.gamebeginCb && this.gamebeginCb(this)
+    this.gamebeginCb && this.gamebeginCb(this) // TODO: clean this
     logger.debug(`game ${this.uuid} begin`)
+    const { think, validate, accept, pre, post } = this.warpTimely()
     let turn = 0
     try {
       while (true) {
@@ -171,18 +164,19 @@ export class Game extends EventEmitter {
         turn++
         const moves = []
         for (const playerId in this.players) {
-          const { moveWarpper, move } = await this.requireMove(playerId); // TODO: make validation, and do not use magic string
 
-          await this.validateMove(moveWarpper, move);
+          const { moveWarpper, move } = await think(playerId); // TODO: make validation, and do not use magic string
 
-          await this.acceptMove(moves, move, moveWarpper);
+          await validate(moveWarpper, move);
+
+          await accept(moves, move, moveWarpper);
 
           // TODO refactor this
           if (this.stopFlag) {
-            throw new GameAbortException()
+            throw new GameAbortException(this.stopReason)
           }
 
-          if (await this.gameRule.validate_move_post_requirements(this.match_ctx, moveWarpper) === GAME_SHALL_OVER) {
+          if (await post(this.match_ctx, moveWarpper) === GAME_SHALL_OVER) {
             throw new GameOverException()
           }
         }
@@ -190,21 +184,34 @@ export class Game extends EventEmitter {
     } catch (e) {
       if (e instanceof GameOverException) {
         // this is normal
+        throw e
+      } if (e instanceof GameAbortException) {
+        logger.debug(`game ${this.uuid} aborted: ${e.message}`)
+        throw e
       } else {
         throw e
       }
+    } finally {
+      // close all player
+      for (const player of Object.values(this.players)) {
+        (player as PlayerBase).onGameover(this.game_ctx)
+      }
+
+      this.setState('gameover')
+      this.emit('gameover', this.game_ctx)
+      this.gameoverCb && this.gameoverCb(this.game_ctx)
+      logger.debug(`game ${this.uuid} over`)
     }
+  }
 
-
-    // close all player
-    for (const player of Object.values(this.players)) {
-      (player as PlayerBase).onGameover(this.game_ctx)
-    }
-
-    this.setState('gameover')
-    this.emit('gameover', this.game_ctx)
-    this.gameoverCb && this.gameoverCb(this.game_ctx)
-    logger.debug(`game ${this.uuid} over`)
+  private warpTimely(): { think: any; validate: any; accept: any; pre: any; post: any; } {
+    return this.timely.emitters({
+      think: this.requireMove,
+      validate: this.validateMove,
+      accept: this.acceptMove,
+      pre: this.gameRule.validate_game_pre_requirements,
+      post: this.gameRule.validate_move_post_requirements
+    });
   }
 
   private async acceptMove(moves: any[], move: any, moveWarpper: PlayerMoveWarpper) {
@@ -286,9 +293,10 @@ class GameOverException extends Error {
 }
 
 class GameAbortException extends Error {
-  constructor() {
+  constructor(reason: string) {
     super()
     this.name = "GameAbortException"
+    this.message = reason
   }
 }
 
