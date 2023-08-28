@@ -62,6 +62,10 @@ export abstract class GameRuleBase extends EventEmitter implements IGameRule {
   public isReady(): Promise<boolean> {
     return Promise.resolve(true)
   }
+
+  public ready(): Promise<void> {
+    return Promise.resolve()
+  }
 }
 
 export type IGameRuleConstructor = (new () => GameRuleBase);

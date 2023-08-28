@@ -117,12 +117,12 @@ export class Game extends EventEmitter {
       gameId: this.uuid,
       matchCtx: this.match_ctx,
     }
-
+    
+    // DANGER: never touch this
     gameRule.bind_parent(this)
     gameRule.on('ready', () => {
       this.emit('status-change')
     })
-    // this is the onlt place to call this!
 
     this.on('status-change', async () => {
       const release = await this.mutex.acquire();
@@ -150,7 +150,7 @@ export class Game extends EventEmitter {
     await this.gameRule.init_game(this.match_ctx)
     this.init();
     this.gamebeginCb && this.gamebeginCb(this) // TODO: clean this
-    const { think, validate, accept, pre, post } = this.warpTimely()
+    const { think, validate, accept, post } = this.warpTimely()
     let turn = 0
     const moves = []
 
@@ -189,8 +189,7 @@ export class Game extends EventEmitter {
       logger.debug(`game ${this.uuid} over`)
     }
   }
-
-
+  
   private init() {
     this.emit('game-begin', this);
     logger.debug(`game ${this.uuid} begin`);
@@ -278,6 +277,7 @@ export class Game extends EventEmitter {
     })
   }
 
+  //TODO add a whenReady() function, better to use a helper function
   public async Ready(): Promise<boolean> {
     return await this.gameRule.isReady()
       && All(Object.values(this.players), player => player.ready)
